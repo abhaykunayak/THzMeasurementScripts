@@ -11,11 +11,11 @@ import labrad
 
 class CurrentPoll(Thread):
     
-    def __init__(self,smu):
+    def __init__(self,smu,delay=0.1):
         Thread.__init__(self)
         self.daemon = True
         self.stop_thread = False
-        self.delay = 0.02
+        self.delay = delay
         self.smu = smu
         self.I = 0
         self.start()
