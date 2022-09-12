@@ -15,17 +15,14 @@ from scipy.ndimage import gaussian_filter
 
 class Scan(Thread):
     
-    def __init__(self,spot,smu,dac,dac_ch_x,dac_ch_y,x_center,y_center,scan_range,scan_step):
+    def __init__(self,spot,smu,dac,dac_ch_x,dac_ch_y):
         Thread.__init__(self)
+        self.daemon = True
         self.spot = spot
         self.smu = smu
         self.dac = dac
         self.dac_ch_x = dac_ch_x
         self.dac_ch_y = dac_ch_y
-        self.x_center = x_center
-        self.y_center = y_center
-        self.scan_range = scan_range
-        self.scan_step = scan_step
         self.max_I = 0
         self.max_x = 0
         self.max_y = 0
@@ -49,6 +46,15 @@ class Scan(Thread):
         val = now.strftime("%H:%M:%S")
         return val
     
+    def set_scan_range(self,x_center,y_center,scan_range,scan_step):
+        self.x_center = x_center
+        self.y_center = y_center
+        self.scan_range = scan_range
+        self.scan_step = scan_step
+        
+    def set_datafile(self,dv):
+        self.dv = dv
+        
     def run(self):
 
         # Scan range
@@ -70,8 +76,11 @@ class Scan(Thread):
             # scan in Y    
             for j in range(len(y_rng)):
                 self.dac.set_voltage(self.dac_ch_y, y_rng[j])
-                time.sleep(0.01)
+                # time.sleep(0.01)
                 currentRead[i][j] = self.smu.read_i()
+                
+                data = np.array([x_rng[i], y_rng[j], currentRead[i][j]])
+                self.dv.add(data)
                 
         currentRead = gaussian_filter(currentRead, sigma=1)
         self.max_I = np.max(currentRead)
@@ -91,11 +100,9 @@ def main():
     # Define parameters
     params = dict()
 
-    # params['SCAN_BEAM'] = 'A'           # E or A
-
-    # params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"                               
-    # params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"                  
-    # params['FILENAME'] = "a_T_303K"
+    params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"                               
+    params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"                  
+    params['FILENAME'] = "T_303K"
         
     params['EY_CENTER'] = -0.3534       #DAC1 refl: -0.3; trans: -0.35
     params['EX_CENTER'] = 4.8381        #DAC0 refl: 5.16; trans: 6.25
@@ -119,15 +126,20 @@ def main():
     params['FILT_TYPE'] = "REPeat"      # 'REPeat' or 'MOVing'
     params['FILT_COUNT'] = 1            # 1 -- 100
 
+    params["AUTOZOOM"] = True
     
     # Initialize labrad and servers
-    cxn_m = labrad.connect()
+    cxn_e = labrad.connect()
+    cxn_a = labrad.connect()
         
     # DAC-ADC
-    dac_m = cxn_m.dac_adc
-    dac_m.select_device(params['DAC_MIRROR'])
+    dac_e = cxn_e.dac_adc
+    dac_e.select_device(params['DAC_MIRROR'])
+    
+    dac_a = cxn_a.dac_adc
+    dac_a.select_device(params['DAC_MIRROR'])
 
-    smu2400 = cxn_m.k2400()
+    smu2400 = cxn_e.k2400()
     smu2400.select_device()
     smu2400.gpib_write(":ROUTe:TERMinals FRONt") # FRONt or REAR
     
@@ -136,7 +148,7 @@ def main():
     smu2400.gpib_write(':SENSe:AVERage:COUNt {}'.format(params['FILT_COUNT']))
     smu2400.gpib_write(':SENSe:AVERage {}'.format(params['FILT']))
     
-    smu2450 = cxn_m.k2450()
+    smu2450 = cxn_a.k2450()
     smu2450.select_device()
     smu2450.gpib_write(":ROUTe:TERMinals FRONt") # FRONt or REAR
     
@@ -145,11 +157,29 @@ def main():
     smu2450.gpib_write(':SENSe:AVERage:COUNt {}'.format(params['FILT_COUNT']))
     smu2450.gpib_write(':SENSe:AVERage {}'.format(params['FILT']))
     
+    # Data vault
+    dv_e = cxn_e.data_vault()
+    dv_a = cxn_e.data_vault()
+    
+    # Change to data directory
+    dv_e.cd(params['DATADIR'])
+    dv_a.cd(params['DATADIR'])
+    
+    # Create new data file
+    dv_e.new('E_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    dv_a.new('A_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    
     # Instatiate mirror scan object
-    scan_e = Scan('E',smu2400,dac_m,0,1,params['EX_CENTER'],params['EY_CENTER'],
-                         params['RANGE'],params['STEP'])
-    scan_a = Scan('A',smu2450,dac_m,2,3,params['AX_CENTER'],params['AY_CENTER'],
-                         params['RANGE'],params['STEP'])
+    scan_e = Scan('E',smu2400,dac_e,0,1)
+    scan_a = Scan('A',smu2450,dac_a,2,3)
+    
+    # DataVault File
+    scan_e.set_datafile(dv_e)
+    scan_a.set_datafile(dv_a)
+    
+    # Coarse
+    scan_e.set_scan_range(params['EX_CENTER'],params['EY_CENTER'], params['RANGE'],params['STEP'])
+    scan_a.set_scan_range(params['AX_CENTER'],params['AY_CENTER'], params['RANGE'],params['STEP'])
     
     # Measurement
     start = time.time()
@@ -162,13 +192,32 @@ def main():
     scan_a.voltage_ramp(0, params['BIAS'])
 
     # Scan the Mirror
-    # scan_e.start()
+    scan_e.start()
     scan_a.start()
     
     # Wait to finish scan
-    # scan_e.join()
+    scan_e.join()
     scan_a.join()
     
+    if params["AUTOZOOM"]:
+        # Create new data file
+        dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        scan_e.set_datafile(dv_e)
+        scan_a.set_datafile(dv_a)
+        
+        # Fine
+        scan_e.set_scan_range(scan_e.max_x,scan_e.max_y,params['RANGE']/20,params['STEP']/20)
+        scan_a.set_scan_range(scan_a.max_x,scan_a.max_x, params['RANGE']/20,params['STEP']/20)
+        
+        # Scan the Mirror
+        scan_e.start()
+        scan_a.start()
+        
+        # Wait to finish scan
+        scan_e.join()
+        scan_a.join()
+        
     # Voltage ramp doen
     scan_e.voltage_ramp(params['BIAS'], 0)
     scan_a.voltage_ramp(params['BIAS'], 0)
