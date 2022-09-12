@@ -11,11 +11,11 @@ import labrad
 
 class TemperaturePoll(Thread):
     
-    def __init__(self,ls):
+    def __init__(self,ls,delay=0.1):
         Thread.__init__(self)
         self.daemon = True
         self.stop_thread = False
-        self.delay = 0.01
+        self.delay = delay
         self.ls = ls
         self.tempD4 = 0
         self.tempD5 = 0

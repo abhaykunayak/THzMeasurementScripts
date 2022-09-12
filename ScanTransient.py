@@ -250,19 +250,19 @@ def main():
     # Initialize labrad and servers
     cxn_m = labrad.connect()
     
-    # DAC - lockin
-    dac = cxn.dac_adc
-    dac.select_device(params['DAC_DATA'])
-    dac.initialize()
-    for i in range(4):
-        dac.set_conversiontime(i,params['DAC_CONV_TIME'])
-    
     # DAC - Mirror
     dac_m = cxn_m.dac_adc
     dac_m.select_device(params['DAC_MIRROR'])
     for i in range(4):
         dac_m.set_conversiontime(i,params['DAC_CONV_TIME'])
     
+    # DAC - lockin
+    dac = cxn.dac_adc
+    dac.select_device(params['DAC_DATA'])
+    dac.initialize()
+    for i in range(4):
+        dac.set_conversiontime(i,params['DAC_CONV_TIME'])
+        
     # K2400
     smu2400 = cxn.k2400()
     smu2400.select_device()
