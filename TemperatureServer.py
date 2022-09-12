@@ -14,6 +14,7 @@ class TemperaturePoll(Thread):
     def __init__(self,ls):
         Thread.__init__(self)
         self.daemon = True
+        self.stop_thread = False
         self.delay = 0.01
         self.ls = ls
         self.tempD4 = 0
@@ -26,6 +27,10 @@ class TemperaturePoll(Thread):
         
     def run(self):
         while True:
+            if self.stop_thread:
+                print("Temperature server killed.")
+                break
+            
             try:
                 self.tempD4 = float(self.ls.read_temp('D4'))
                 sleep(self.delay)

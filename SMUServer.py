@@ -14,6 +14,7 @@ class CurrentPoll(Thread):
     def __init__(self,smu):
         Thread.__init__(self)
         self.daemon = True
+        self.stop_thread = False
         self.delay = 0.01
         self.smu = smu
         self.I = 0
@@ -21,6 +22,9 @@ class CurrentPoll(Thread):
         
     def run(self):
         while True:
+            if self.stop_thread:
+                print("SMU server killed.")
+                break
             try:
                 self.I = self.smu.read_i()
                 sleep(self.delay)

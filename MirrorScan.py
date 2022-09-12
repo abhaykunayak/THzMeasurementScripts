@@ -8,16 +8,16 @@ Created on Fri Sep  9 20:01:38 2022
 import time
 import labrad
 import numpy as np
-import yaml
 from datetime import datetime
 from threading import Thread
 from scipy.ndimage import gaussian_filter
 
 class Scan(Thread):
     
-    def __init__(self,spot,smu,dac,dac_ch_x,dac_ch_y):
+    def __init__(self,spot,smu,dac,dac_ch_x,dac_ch_y,save_data=False):
         Thread.__init__(self)
         self.daemon = True
+        self.save_data = save_data
         self.spot = spot
         self.smu = smu
         self.dac = dac
@@ -55,6 +55,11 @@ class Scan(Thread):
     def set_datafile(self,dv):
         self.dv = dv
         
+    def save_to_datavault(self,x,y,I):
+        if self.save_data:
+                data = np.array([x, y, I])
+                self.dv.add(data)
+        
     def run(self):
 
         # Scan range
@@ -78,23 +83,21 @@ class Scan(Thread):
                 self.dac.set_voltage(self.dac_ch_y, y_rng[j])
                 # time.sleep(0.01)
                 currentRead[i][j] = self.smu.read_i()
-                
-                data = np.array([x_rng[i], y_rng[j], currentRead[i][j]])
-                self.dv.add(data)
+                self.save_to_datavault(x_rng[i], y_rng[j], currentRead[i][j])
                 
         currentRead = gaussian_filter(currentRead, sigma=1)
         self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
         self.max_y = y_rng[max_y_idx]
-        print("Max current {:.4f} nA at X: {:.4f} V, Y: {:.4f} V".format(self.max_I*1e9,self.max_x,self.max_y))
+        print("Max current {} {:.4f} nA at X: {:.4f} V, Y: {:.4f} V".format(
+            self.spot,self.max_I*1e9,self.max_x,self.max_y))
         
         self.dac.set_voltage(self.dac_ch_x, self.max_x)
         self.dac.set_voltage(self.dac_ch_y, self.max_y)
         
         return
 
-    
 def main():
     
     # Define parameters
@@ -170,8 +173,8 @@ def main():
     dv_a.new('A_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
     
     # Instatiate mirror scan object
-    scan_e = Scan('E',smu2400,dac_e,0,1)
-    scan_a = Scan('A',smu2450,dac_a,2,3)
+    scan_e = Scan('E',smu2400,dac_e,0,1,True)
+    scan_a = Scan('A',smu2450,dac_a,2,3,True)
     
     # DataVault File
     scan_e.set_datafile(dv_e)
@@ -199,16 +202,28 @@ def main():
     scan_e.join()
     scan_a.join()
     
+    e_max_x = scan_e.max_x
+    e_max_y = scan_e.max_y
+    
+    a_max_x = scan_a.max_x
+    a_max_y = scan_a.max_y
+    
     if params["AUTOZOOM"]:
+        print("[{}] Auto-zoom...".format(scan_e.current_time()) )
         # Create new data file
         dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
         dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        
+        # Instatiate mirror scan object
+        scan_e = Scan('E',smu2400,dac_e,0,1,True)
+        scan_a = Scan('A',smu2450,dac_a,2,3,True)
+        
         scan_e.set_datafile(dv_e)
         scan_a.set_datafile(dv_a)
         
         # Fine
-        scan_e.set_scan_range(scan_e.max_x,scan_e.max_y,params['RANGE']/20,params['STEP']/20)
-        scan_a.set_scan_range(scan_a.max_x,scan_a.max_x, params['RANGE']/20,params['STEP']/20)
+        scan_e.set_scan_range(e_max_x,e_max_y,params['RANGE']/20,params['STEP']/20)
+        scan_a.set_scan_range(a_max_x,a_max_y, params['RANGE']/20,params['STEP']/20)
         
         # Scan the Mirror
         scan_e.start()
