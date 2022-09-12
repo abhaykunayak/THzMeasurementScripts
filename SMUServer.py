@@ -15,7 +15,7 @@ class CurrentPoll(Thread):
         Thread.__init__(self)
         self.daemon = True
         self.stop_thread = False
-        self.delay = 0.01
+        self.delay = 0.02
         self.smu = smu
         self.I = 0
         self.start()

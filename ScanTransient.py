@@ -154,15 +154,8 @@ class Transient:
     def scan_transient(self,params,delay_mm,delay_ps):
         
         SMUServer_e = SMUServer.CurrentPoll(self.smu_e)
-        SMUServer_a = SMUServer.CurrentPoll(self.smu_a)
+        # SMUServer_a = SMUServer.CurrentPoll(self.smu_a)
         
-        _ = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
-                                           params['DAC_INPUT_CH'],
-                                           [0.0],
-                                           [0.0],
-                                           10,
-                                           params['SAMPLING']*params['TIME_CONST']*1e6,
-                                           params['AVGS']))
                 
         for i in range(params['DELAY_POINTS']):
                 percent = (delay_mm[i]-np.min(delay_mm))/(np.max(delay_mm)-np.min(delay_mm))
@@ -188,11 +181,11 @@ class Transient:
                 in1 = br_data[0][0]*params['SENS']/10.0/params['GAIN']
                 in2 = br_data[1][0]*params['SENS']/10.0/params['GAIN']
                 self.I_e = SMUServer_e.I
-                self.I_a = SMUServer_a.I
+                # self.I_a = SMUServer_a.I
                 self.save_to_datavault(delay_mm[i], delay_ps[i], in1, in2)
         
         SMUServer_e.stop_thread = True
-        SMUServer_a.stop_thread = True
+        # SMUServer_a.stop_thread = True
             
 
 def main():
@@ -263,7 +256,6 @@ def main():
     dac.initialize()
     for i in range(4):
         dac.set_conversiontime(i,params['DAC_CONV_TIME'])
-    
     
     # DAC - Mirror
     dac_m = cxn_m.dac_adc
@@ -359,6 +351,13 @@ def main():
             
             # Transient
             scanTransient.log_message("Starting transient measurement...")
+            _ = np.array(dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
+                                               params['DAC_INPUT_CH'],
+                                               [0.0],
+                                               [0.0],
+                                               10,
+                                               params['SAMPLING']*params['TIME_CONST']*1e6,
+                                               params['AVGS']))
             scanTransient.scan_transient(params, delay_mm, delay_ps)
             
     except KeyboardInterrupt:
