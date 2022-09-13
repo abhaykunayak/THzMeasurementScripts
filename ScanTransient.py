@@ -80,10 +80,10 @@ class Transient:
                 ['Lockin X [A]', 'Lockin Y [A]', 'Temp A [K]', 'Temp B [K]', 
                 'Emitter Current [A]', 'AB Current [A]'])
         
-        # self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
-        # self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
-        # self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_PS']))
-        # self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
+        self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
+        self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
+        self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_MM']))
+        self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
         self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
                                         ('delay_ps', 'Lockin Y'), 
                                         ('delay_ps', 'Emitter Current'), 
@@ -237,7 +237,7 @@ def main():
     
     # Define parameters
     params = dict()
-    params['MEASURE_MODE'] = 'FAST'     # or 'SLOW'
+    params['MEASURE_MODE'] = 'SLOW'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"  
     params['FILENAME'] = "refl_transient_T_303K_ms"
