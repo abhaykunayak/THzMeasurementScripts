@@ -85,7 +85,13 @@ class Transient:
         with open(config_filename, 'w') as f:
             yaml.dump(params, f, sort_keys=False, default_flow_style=False)
             self.log_message("Config file written.")
-
+    
+    def setup_delay(self,delay_start,delay_end,pts):
+        # Calculate delay
+        self.delay_mm = np.linspace(delay_start,delay_end,pts)
+        self.delay_ps = np.linspace((delay_start/0.299792485)*2,
+                                    (delay_end/0.299792458)*2,pts)
+        
     def voltage_ramp_smu(self,smu,v_initial,v_final):
         
         self.log_message("Starting SMU voltage ramp...")
@@ -151,21 +157,21 @@ class Transient:
         self.a_max_x = scan_a.max_x
         self.a_max_y = scan_a.max_y
     
-    def scan_transient(self,params,delay_mm,delay_ps):
+    def scan_transient(self,params):
         
-        SMUServer_e = SMUServer.CurrentPoll(self.smu_e)
+        self.SMUServer_e = SMUServer.CurrentPoll(self.smu_e)
         # SMUServer_a = SMUServer.CurrentPoll(self.smu_a)
         
                 
         for i in range(params['DELAY_POINTS']):
-                percent = (delay_mm[i]-np.min(delay_mm))/(np.max(delay_mm)-np.min(delay_mm))
+                percent = (self.delay_mm[i]-np.min(self.delay_mm))/(np.max(self.delay_mm)-np.min(self.delay_mm))
                 if i%10==0:
                     self.log_message("Stepping stage to {:.2f} mm; {:.3f} ps; {:.2f} %"
-                          .format(delay_mm[i], delay_ps[i], 100*percent))
+                          .format(self.delay_mm[i], self.delay_ps[i], 100*percent))
 
                 # Move stage
                 try:
-                    self.ds.move_absolute(1,delay_mm[i])
+                    self.ds.move_absolute(1,self.delay_mm[i])
                 except:
                     self.log_message("Stage movement error.")
                 
@@ -180,19 +186,52 @@ class Transient:
 
                 in1 = br_data[0][0]*params['SENS']/10.0/params['GAIN']
                 in2 = br_data[1][0]*params['SENS']/10.0/params['GAIN']
-                self.I_e = SMUServer_e.I
+                self.I_e = self.SMUServer_e.I
                 # self.I_a = SMUServer_a.I
-                self.save_to_datavault(delay_mm[i], delay_ps[i], in1, in2)
+                self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], in1, in2)
         
-        SMUServer_e.stop_thread = True
+        self.SMUServer_e.stop_thread = True
         # SMUServer_a.stop_thread = True
+    
+    def scan_transient_fast(self,params):
+        
+        # Start moving stage
+        self.log_message("Moving to final position...")
+        self.ds.gpib_write("1VA{:.6f}".format(params['STAGE_VEL']))
+        self.ds.move_absolute(1,params['DELAY_RANGE_MM'][1])
             
+        # Buffer ramp DAC
+        br_data = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
+                                            params['DAC_INPUT_CH'],
+                                            [0.0],
+                                            [0.0],
+                                            params['FPOINTS'],
+                                            params['SAMPLING']*params['TIME_CONST']*1e6,
+                                            params["READINGS"]),dtype=np.float64)   
+        
+        self.log_message("Finished reading buffer.")
+        
+        # Save data tp Data Vault
+        dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],br_data*params['SENS']/10.0/params['GAIN'],
+                                  np.ones((1,params['AVGS']))*self.tempD4,
+                                  np.ones((1,params['AVGS']))*self.tempD5,
+                                  np.ones((1,params['AVGS']))*self.I_e,
+                                  np.ones((1,params['AVGS']))*self.I_a,),axis=0).T
+        self.dv.add(dv_data)
+            
+        # Start moving stage
+        self.log_message("Moving to start position...")
+        self.ds.gpib_write("1VA{:.6f}".format(20))
+        self.ds.move_absolute(1,params['DELAY_RANGE_MM'][0])
+        
+        # Sleep
+        time.sleep(10)
 
 def main():
     
     # Define parameters
     params = dict()
-
+    params['MEASURE_MODE'] = 'FAST'     # or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"  
     params['FILENAME'] = "refl_transient_T_303K_ms"
@@ -204,13 +243,17 @@ def main():
 
     params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
     params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
+    params['DAC_TIME'] = 120.42560          # s time taken by DAC for 40000 points
+    params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
 
     params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
 
     params['SWEEPS'] = 3                # Sweeps
     params['AVGS'] = 200                # Averages
+    params['FPOINTS'] = 40000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
+    params['READINGS'] = 1               # Readings
 
     params['GAIN'] = 1e8                # TIA gain
     params['BIAS_E'] = 10               # V on emitter
@@ -286,6 +329,7 @@ def main():
     ls350 = cxn.lakeshore_350()
     ls350.select_device()
     
+    # Start temperature server
     tempServer = TemperatureServer.TemperaturePoll(ls350)
     
     # Delay stage
@@ -299,18 +343,19 @@ def main():
     
     lck.time_constant(params['TIME_CONST'])
     lck.sensitivity(params['SENS'])
-    
-    # Calculate delay
-    delay_mm = np.linspace(params['DELAY_RANGE_MM'][0], params['DELAY_RANGE_MM'][1], params['DELAY_POINTS'])
-    conv_range = [(params['DELAY_RANGE_MM'][0]/0.299792458)*2, (params['DELAY_RANGE_MM'][1]/0.299792458)*2]
-    delay_ps = np.linspace(conv_range[0], conv_range[1], params['DELAY_POINTS'])
-    params['DELAY_RANGE_PS'] = [delay_ps.tolist()[0], delay_ps.tolist()[-1]]
-    
+      
     # DataVault
     dv = cxn.data_vault
     dv.cd(params['DATADIR']) # Change to data directory
     
+    # Instantiate scan transient object
     scanTransient = Transient(dv, ds, dac, dac_m, dac_m, smu2400, smu2450, tempServer)
+    
+    # Set up delay
+    if params['MEASURE_MODE'] == 'FAST':
+        scanTransient.setup_delay(params['DELAY_RANGE_MM'][0], params['DELAY_RANGE_MM'][1], params['FPOINTS'])
+    else:
+        scanTransient.setup_delay(params['DELAY_RANGE_MM'][0], params['DELAY_RANGE_MM'][1], params['DELAY_POINTS'])
     
     # Set mirror scan parameters
     scanTransient.set_scan_params(params)
@@ -330,13 +375,6 @@ def main():
     scanTransient.log_message('Coarse mirror Scan E and A...')
     scanTransient.scan_mirror()
     
-    _ = np.array(dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
-                                       params['DAC_INPUT_CH'],
-                                       [0.0],
-                                       [0.0],
-                                       10,
-                                       params['SAMPLING']*params['TIME_CONST']*1e6,
-                                       params['AVGS']))
     try:
         for i in range(params['SWEEPS']):
             # Sweep
@@ -358,7 +396,18 @@ def main():
             
             # Transient
             scanTransient.log_message("Starting transient measurement...")
-            scanTransient.scan_transient(params, delay_mm, delay_ps)
+            _ = np.array(dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
+                                               params['DAC_INPUT_CH'],
+                                               [0.0],
+                                               [0.0],
+                                               6,
+                                               params['SAMPLING']*params['TIME_CONST']*1e6,
+                                               params['AVGS']))
+            if params['MEASURE_MODE'] == 'FAST':
+                scanTransient.scan_transient_fast(params)
+            else:
+                scanTransient.scan_transient(params)
+            
             
     except KeyboardInterrupt:
         scanTransient.log_message("Measurement interrupted.")
@@ -367,8 +416,8 @@ def main():
     tempServer.stop_thread = True
     
     # Kill SMU server
-    # SMUServer_e.stop_thread = True
-    # SMUServer_a.stop_thread = True
+    scanTransient.SMUServer_e.stop_thread = True
+    scanTransient.SMUServer_a.stop_thread = True
     
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
