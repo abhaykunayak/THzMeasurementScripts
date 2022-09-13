@@ -28,6 +28,7 @@ class Transient:
         self.smu_e = smu_e
         self.smu_a = smu_a
         self.tempServer = tempServer
+        self.SMUServer_e = 0
         self.I_e = 0
         self.I_a = 0
         
@@ -201,7 +202,8 @@ class Transient:
         self.log_message("Moving to final position...")
         self.ds.gpib_write("1VA{:.6f}".format(params['STAGE_VEL']))
         self.ds.move_absolute(1,params['DELAY_RANGE_MM'][1])
-            
+        
+        br_start = time.time()
         # Buffer ramp DAC
         br_data = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
                                             params['DAC_INPUT_CH'],
@@ -211,7 +213,8 @@ class Transient:
                                             params['SAMPLING']*params['TIME_CONST']*1e6,
                                             params["READINGS"]),dtype=np.float64)   
         
-        self.log_message("Finished reading buffer.")
+        br_end = time.time()
+        self.log_message("Finished reading buffer in {:.6f}s.".format(br_end-br_start))
         
         # Save data tp Data Vault
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
@@ -246,7 +249,7 @@ def main():
 
     params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
     params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
-    params['DAC_TIME'] = 120.42560          # s time taken by DAC for 40000 points
+    params['DAC_TIME'] = 128.177894115          # s time taken by DAC for 40000 points
     params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
 
     params['TIME_CONST'] = 0.01         # s; Lockin
@@ -419,10 +422,13 @@ def main():
     # Kill Temperature server
     tempServer.stop_thread = True
     
-    # Kill SMU server
-    scanTransient.SMUServer_e.stop_thread = True
-    scanTransient.SMUServer_a.stop_thread = True
-    
+    try:
+        # Kill SMU server
+        scanTransient.SMUServer_e.stop_thread = True
+        scanTransient.SMUServer_a.stop_thread = True
+    except:
+        print('Dead already!.')
+        
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
         
