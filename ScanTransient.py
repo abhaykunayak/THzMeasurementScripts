@@ -330,6 +330,13 @@ def main():
     scanTransient.log_message('Coarse mirror Scan E and A...')
     scanTransient.scan_mirror()
     
+    _ = np.array(dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
+                                       params['DAC_INPUT_CH'],
+                                       [0.0],
+                                       [0.0],
+                                       10,
+                                       params['SAMPLING']*params['TIME_CONST']*1e6,
+                                       params['AVGS']))
     try:
         for i in range(params['SWEEPS']):
             # Sweep
@@ -351,13 +358,6 @@ def main():
             
             # Transient
             scanTransient.log_message("Starting transient measurement...")
-            _ = np.array(dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
-                                               params['DAC_INPUT_CH'],
-                                               [0.0],
-                                               [0.0],
-                                               10,
-                                               params['SAMPLING']*params['TIME_CONST']*1e6,
-                                               params['AVGS']))
             scanTransient.scan_transient(params, delay_mm, delay_ps)
             
     except KeyboardInterrupt:
