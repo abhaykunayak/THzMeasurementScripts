@@ -64,27 +64,29 @@ class Transient:
         filename_log = "{}_{}.log".format(datetime.now().strftime("%Y%m%d%H%M%S"),params['FILENAME'])
         logging.basicConfig(filename="{}".format(filename_log), level=logging.INFO, force=True)
         self.log_message('Started logging...')
+        params['LOGFILE'] = filename_log
     
-    def setup_datavault(self,params):
-
-        self.dv.new(params['FILENAME']+'_sweep_{:03d}'.format(self.idx), params['DEPENDENTS'],
-                ['Lockin X [A]', 'Lockin Y [A]', 'Input 2 [V]', 'Input 3 [V]', 'Temp A [K]', 'Temp B [K]', 
-                'Emitter Current [A]', 'AB Current [A]'])
-        
-        self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
-        self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
-        self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_PS']))
-        self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
-        self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
-                                        ('delay_ps', 'Lockin Y'), 
-                                        ('delay_ps', 'Emitter Current'), 
-                                        ('delay_ps', 'AB Current')))
-        
+    def save_config(self,params):
         # Save all parameters
         config_filename = params['ROOTDIR']+"\\"+params['DATADIR']+".dir\\"+self.dv.get_name()+".yml"
         with open(config_filename, 'w') as f:
             yaml.dump(params, f, sort_keys=False, default_flow_style=False)
             self.log_message("Config file written.")
+            
+    def setup_datavault(self,params):
+
+        self.dv.new(params['FILENAME']+'_sweep_{:03d}'.format(self.idx), params['DEPENDENTS'],
+                ['Lockin X [A]', 'Lockin Y [A]', 'Temp A [K]', 'Temp B [K]', 
+                'Emitter Current [A]', 'AB Current [A]'])
+        
+        # self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
+        # self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
+        # self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_PS']))
+        # self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
+        self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
+                                        ('delay_ps', 'Lockin Y'), 
+                                        ('delay_ps', 'Emitter Current'), 
+                                        ('delay_ps', 'AB Current')))
     
     def setup_delay(self,delay_start,delay_end,pts):
         # Calculate delay
@@ -131,7 +133,7 @@ class Transient:
         self.tempD4  = self.tempServer.tempD4
         self.tempD5  = self.tempServer.tempD5
         
-        data = np.array([dmm,dps,in1,in2,0,0,self.tempD4,self.tempD5,self.I_e,self.I_a])
+        data = np.array([dmm,dps,in1,in2,self.tempD4,self.tempD5,self.I_e,self.I_a])
         self.dv.add(data)
         
     def scan_mirror(self,k=1):
@@ -212,11 +214,12 @@ class Transient:
         self.log_message("Finished reading buffer.")
         
         # Save data tp Data Vault
-        dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],br_data*params['SENS']/10.0/params['GAIN'],
-                                  np.ones((1,params['AVGS']))*self.tempD4,
-                                  np.ones((1,params['AVGS']))*self.tempD5,
-                                  np.ones((1,params['AVGS']))*self.I_e,
-                                  np.ones((1,params['AVGS']))*self.I_a,),axis=0).T
+        dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
+                                  br_data*params['SENS']/10.0/params['GAIN'],
+                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
+                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD5,
+                                  np.ones((1,params['FPOINTS']))*self.I_e,
+                                  np.ones((1,params['FPOINTS']))*self.I_a,),axis=0).T
         self.dv.add(dv_data)
             
         # Start moving stage
@@ -268,11 +271,11 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3534       #DAC1
-    params['EX_CENTER'] = 4.8381         #DAC0
-    params['AY_CENTER'] = 0.5542        #DAC3
-    params['AX_CENTER'] = 1.5308        #DAC2 
-    params['RANGE'] = 0.2
+    params['EY_CENTER'] = -0.3584       #DAC1
+    params['EX_CENTER'] = 4.8316         #DAC0
+    params['AY_CENTER'] = 0.5507        #DAC3
+    params['AX_CENTER'] = 1.5298        #DAC2 
+    params['RANGE'] = 0.20
     params['STEP'] = 0.01
 
     # DAC
@@ -386,13 +389,14 @@ def main():
             # Check current on E and A
             scanTransient.log_message("Checking for max current on E switch...")
             scanTransient.voltage_ramp_smu(smu2450, smu2450.read_v(), params['BIAS_E'])
-            scanTransient.scan_mirror(k=20)
+            scanTransient.scan_mirror(k=15)
             scanTransient.voltage_ramp_smu(smu2450, smu2450.read_v(), 0)
             
             # Setup DataVault file and Config file
             scanTransient.log_message("Setting up datavault and config file...")
             scanTransient.idx = i
             scanTransient.setup_datavault(params)
+            scanTransient.save_config(params)
             
             # Transient
             scanTransient.log_message("Starting transient measurement...")

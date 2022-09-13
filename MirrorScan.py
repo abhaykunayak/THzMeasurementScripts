@@ -90,8 +90,8 @@ class Scan(Thread):
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
         self.max_y = y_rng[max_y_idx]
-        print("Max current {} {:.4f} nA at X: {:.4f} V, Y: {:.4f} V".format(
-            self.spot,self.max_I*1e9,self.max_x,self.max_y))
+        print("[{}] Max current {} {:.4f} nA at X: {:.4f} V, Y: {:.4f} V".format(
+            self.current_time(),self.spot,self.max_I*1e9,self.max_x,self.max_y))
         
         self.dac.set_voltage(self.dac_ch_x, self.max_x)
         self.dac.set_voltage(self.dac_ch_y, self.max_y)
