@@ -76,9 +76,8 @@ class Transient:
             
     def setup_datavault(self,params):
 
-        self.dv.new(params['FILENAME']+'_sweep_{:03d}'.format(self.idx), params['DEPENDENTS'],
-                ['Lockin X [A]', 'Lockin Y [A]', 'Temp A [K]', 'Temp B [K]', 
-                'Emitter Current [A]', 'AB Current [A]'])
+        self.dv.new(params['FILENAME']+'_sweep_{:03d}'.format(self.idx), 
+                    params['DEPENDENTS'], params['INDEPENDENTS'])
         
         self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
         self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
@@ -107,17 +106,25 @@ class Transient:
             time.sleep(0.1)
         time.sleep(1)
         self.log_message("Voltage SMU ramp ended.")
-
+    
+    def init_delay_stage(self,params):
+        self.ds.gpib_write("1AC0.1")
+        self.ds.gpib_write("1AG0.1")
+        self.ds.gpib_write("1BM9,1")
+        self.ds.gpib_write("1BN1")
+        self.ds.gpib_write("BO 2H")
+        
     def init_stage_position(self,params):
         # Move stage to starting position
         self.log_message("Moving stage to starting position...")
-        self.ds.gpib_write("1VA20.0")
-        self.ds.move_absolute(1,params['DELAY_RANGE_MM'][0])
-        time.sleep(5)
+        self.ds.gpib_write("1VA1.0")
+        self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
+        self.ds.gpib_write("1WS100")
+        time.sleep(10)
         
         for i in range(10):
             try:
-                current_pos = self.ds.tell_position(1)
+                current_pos = float(self.ds.gpib_query("1TP?"))
                 if abs(current_pos-params['DELAY_RANGE_MM'][0])<0.001:
                     self.log_message("Stage in position.")
                     return
@@ -129,12 +136,13 @@ class Transient:
         
         self.log_message("Moving stage timeout.")        
         
-    def save_to_datavault(self,dmm,dps,in1,in2):
+    def save_to_datavault(self,dmm,dps,in1,in2,in3,in4,delay_pos):
         # Read temperature                
         self.tempD4  = self.tempServer.tempD4
         self.tempD5  = self.tempServer.tempD5
         
-        data = np.array([dmm,dps,in1,in2,self.tempD4,self.tempD5,self.I_e,self.I_a])
+        data = np.array([dmm,dps,in1,in2,in3,in4,self.tempD4,self.tempD5,
+                         self.I_e,self.I_a,delay_pos])
         self.dv.add(data)
         
     def scan_mirror(self,k=1):
@@ -163,9 +171,8 @@ class Transient:
     def scan_transient(self,params):
         
         self.SMUServer_e = SMUServer.CurrentPoll(self.smu_e)
-        # SMUServer_a = SMUServer.CurrentPoll(self.smu_a)
-        
-                
+        # self.SMUServer_a = SMUServer.CurrentPoll(self.smu_a)
+                  
         for i in range(params['DELAY_POINTS']):
                 percent = (self.delay_mm[i]-np.min(self.delay_mm))/(np.max(self.delay_mm)-np.min(self.delay_mm))
                 if i%10==0:
@@ -174,7 +181,10 @@ class Transient:
 
                 # Move stage
                 try:
-                    self.ds.move_absolute(1,self.delay_mm[i])
+                    self.ds.gpib_write("1PA{:.6f}".format(self.delay_mm[i]))
+                    self.ds.gpib_write("1WS")
+                    time.sleep(params['TIME_CONST']*3)
+                    delay_pos = float(self.ds.gpib_query("1TP?"))
                 except:
                     self.log_message("Stage movement error.")
                 
@@ -189,9 +199,12 @@ class Transient:
 
                 in1 = br_data[0][0]*params['SENS']/10.0/params['GAIN']
                 in2 = br_data[1][0]*params['SENS']/10.0/params['GAIN']
+                in3 = br_data[2][0]*params['SENS']/10.0/params['GAIN']
+                in4 = br_data[3][0]*params['SENS']/10.0/params['GAIN']
                 self.I_e = self.SMUServer_e.I
-                # self.I_a = SMUServer_a.I
-                self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], in1, in2)
+                # self.I_a = self.SMUServer_a.I
+                self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
+                                       in1, in2, in3, in4, delay_pos)
         
         self.SMUServer_e.stop_thread = True
         # SMUServer_a.stop_thread = True
@@ -201,7 +214,9 @@ class Transient:
         # Start moving stage
         self.log_message("Moving to final position...")
         self.ds.gpib_write("1VA{:.6f}".format(params['STAGE_VEL']))
-        self.ds.move_absolute(1,params['DELAY_RANGE_MM'][1])
+        self.ds.gpib_write("WT1000")
+        self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][1]))
+        self.ds.gpib_write("1WS1000")
         
         br_start = time.time()
         # Buffer ramp DAC
@@ -222,12 +237,14 @@ class Transient:
                                   np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
                                   np.ones((1,params['FPOINTS']))*self.tempServer.tempD5,
                                   np.ones((1,params['FPOINTS']))*self.I_e,
-                                  np.ones((1,params['FPOINTS']))*self.I_a,),axis=0).T
+                                  np.ones((1,params['FPOINTS']))*self.I_a,
+                                  np.ones((1,params['FPOINTS']))),axis=0).T
+        print(np.size(dv_data))
         self.dv.add(dv_data)
             
         # Start moving stage
         self.log_message("Moving to start position...")
-        self.ds.gpib_write("1VA{:.6f}".format(20))
+        self.ds.gpib_write("1VA{:.6f}".format(1))
         self.ds.move_absolute(1,params['DELAY_RANGE_MM'][0])
         
         # Sleep
@@ -237,27 +254,29 @@ def main():
     
     # Define parameters
     params = dict()
-    params['MEASURE_MODE'] = 'SLOW'     # 'FAST' or 'SLOW'
+    params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"  
-    params['FILENAME'] = "refl_transient_T_303K_ms"
+    params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
+    params['FILENAME'] = "transient"
 
     params['DEPENDENTS'] = ['delay_mm', 'delay_ps']
-    params['INDEPENDENTS'] = ['Lockin X [A]', 'Lockin Y [A]', 'Input 2 [V]', 
-                              'Input 3 [V]', 'Temp A [K]', 'Temp B [K]', 
-                              'Emitter Current [A]', 'AB Current [A]']
+    params['INDEPENDENTS'] = ['Lockin X [A]', 'Lockin Y [A]',
+                              'Input 2 [V]', 'Input 3 [V]',
+                              'Temp A [K]', 'Temp B [K]', 
+                              'Emitter Current [A]', 'AB Current [A]',
+                              'Delay Pos [mm]']
 
     params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
     params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
-    params['DAC_TIME'] = 128.177894115          # s time taken by DAC for 40000 points
+    params['DAC_TIME'] = 165.3000          # s time taken by DAC for 40000 points
     params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
 
-    params['TIME_CONST'] = 0.01         # s; Lockin
+    params['TIME_CONST'] = 0.1         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
 
-    params['SWEEPS'] = 3                # Sweeps
+    params['SWEEPS'] = 1                # Sweeps
     params['AVGS'] = 200                # Averages
-    params['FPOINTS'] = 40000           # Fast sweep points
+    params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
     params['READINGS'] = 1               # Readings
 
@@ -274,11 +293,11 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3584       #DAC1
-    params['EX_CENTER'] = 4.8316         #DAC0
-    params['AY_CENTER'] = 0.5507        #DAC3
-    params['AX_CENTER'] = 1.5298        #DAC2 
-    params['RANGE'] = 0.20
+    params['EY_CENTER'] = -0.3700       #DAC1
+    params['EX_CENTER'] = 4.6509         #DAC0
+    params['AY_CENTER'] = 0.4642        #DAC3
+    params['AX_CENTER'] = 1.5396        #DAC2 
+    params['RANGE'] = 0.15
     params['STEP'] = 0.01
 
     # DAC
@@ -287,7 +306,7 @@ def main():
     params['DAC_CONV_TIME'] = 500       # ADC conversion time in us (82 -- 2686)
     params['DAC_OUTPUT_CH'] = 2         # Output channel number
     params['DAC_OUTPUT_CH_DUMMY'] = [0] # Dummy output channel number
-    params['DAC_INPUT_CH'] = [0,1]  # Input channel number
+    params['DAC_INPUT_CH'] = [0,1,2,3]  # Input channel number
     params['DAC_CH_Y'] = 1
     params['DAC_CH_X'] = 0
 
