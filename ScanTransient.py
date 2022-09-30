@@ -75,8 +75,11 @@ class Transient:
             self.log_message("Config file written.")
             
     def setup_datavault(self,params):
-
-        self.dv.new(params['FILENAME']+'_sweep_{:03d}'.format(self.idx), 
+        
+        self.tempD4  = self.tempServer.tempD4
+        
+        self.dv.new(params['FILENAME']+'_T_{:.2f}'.format(self.tempD4)
+                    +'_sw_{:02d}'.format(self.idx), 
                     params['DEPENDENTS'], params['INDEPENDENTS'])
         
         self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
@@ -108,6 +111,8 @@ class Transient:
         self.log_message("Voltage SMU ramp ended.")
     
     def init_delay_stage(self,params):
+        # Delay stage settings
+        self.log_message("Setting up the delay stage...")
         self.ds.gpib_write("1AC0.1")
         self.ds.gpib_write("1AG0.1")
         self.ds.gpib_write("1BM9,1")
@@ -120,7 +125,7 @@ class Transient:
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS100")
-        time.sleep(10)
+        time.sleep(15)
         
         for i in range(10):
             try:
@@ -239,7 +244,7 @@ class Transient:
                                   np.ones((1,params['FPOINTS']))*self.I_e,
                                   np.ones((1,params['FPOINTS']))*self.I_a,
                                   np.ones((1,params['FPOINTS']))),axis=0).T
-        print(np.size(dv_data))
+        
         self.dv.add(dv_data)
             
         # Start moving stage
@@ -274,7 +279,7 @@ def main():
     params['TIME_CONST'] = 0.1         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
 
-    params['SWEEPS'] = 1                # Sweeps
+    params['SWEEPS'] = 5                # Sweeps
     params['AVGS'] = 200                # Averages
     params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
@@ -360,7 +365,6 @@ def main():
     # Delay stage
     ds = cxn.esp300()
     ds.select_device()
-    ds.gpib_write("1VA20.0")
     
     # Lockin
     lck = cxn.sr860()
@@ -381,6 +385,9 @@ def main():
         scanTransient.setup_delay(params['DELAY_RANGE_MM'][0], params['DELAY_RANGE_MM'][1], params['FPOINTS'])
     else:
         scanTransient.setup_delay(params['DELAY_RANGE_MM'][0], params['DELAY_RANGE_MM'][1], params['DELAY_POINTS'])
+    
+    # Initialize the delay stage
+    scanTransient.init_delay_stage(params)
     
     # Set mirror scan parameters
     scanTransient.set_scan_params(params)
@@ -446,7 +453,7 @@ def main():
         scanTransient.SMUServer_e.stop_thread = True
         scanTransient.SMUServer_a.stop_thread = True
     except:
-        print('Dead already!.')
+        scanTransient.log_message("Dead already!.")
         
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
