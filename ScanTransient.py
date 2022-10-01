@@ -259,7 +259,7 @@ def main():
     
     # Define parameters
     params = dict()
-    params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
+    params['MEASURE_MODE'] = 'SLOW'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
     params['FILENAME'] = "transient"
@@ -273,17 +273,17 @@ def main():
 
     params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
     params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
-    params['DAC_TIME'] = 165.3000          # s time taken by DAC for 40000 points
+    params['DAC_TIME'] = 220.0000          # s time taken by DAC for 40000 points
     params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
 
-    params['TIME_CONST'] = 0.1         # s; Lockin
+    params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
 
-    params['SWEEPS'] = 5                # Sweeps
+    params['SWEEPS'] = 10                # Sweeps
     params['AVGS'] = 200                # Averages
     params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
-    params['READINGS'] = 1               # Readings
+    params['READINGS'] = 4               # Readings
 
     params['GAIN'] = 1e8                # TIA gain
     params['BIAS_E'] = 10               # V on emitter
