@@ -298,9 +298,14 @@ class Transient:
             temp_range = np.linspace(params['T_INITIAL'],params['T_FINAL'],params['T_STEPS'])
             try:
                 for t in range(params['T_STEPS']):
+                    self.tempD4 = self.tempServer.tempD4
+                    self.tempD5 = self.tempServer.tempD5
+                    
                     # Set temperature
                     self.log_message("Setting temperature T = {:.2f} K...".format(temp_range[t]))
                     self.ls.set_p(1,temp_range[t])
+                    if self.tempD4>self.tempD5+3.0:
+                        self.ls.set_p(2,temp_range[t]-3.0)
                     time.sleep(60*2)
                     
                     self.scan_transient_sweep(params)
@@ -337,7 +342,7 @@ def main():
     params['T_FINAL'] = 0.0
     params['T_STEPS'] = 1.0
     
-    params['SWEEPS'] = 1                # Sweeps
+    params['SWEEPS'] = 5                # Sweeps
     params['AVGS'] = 200                # Averages
     params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
@@ -356,10 +361,10 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3700       #DAC1
-    params['EX_CENTER'] = 4.6509         #DAC0
-    params['AY_CENTER'] = 0.4642        #DAC3
-    params['AX_CENTER'] = 1.5396        #DAC2 
+    params['EY_CENTER'] = -0.3247       #DAC1
+    params['EX_CENTER'] = 4.6826         #DAC0
+    params['AY_CENTER'] = 0.4842        #DAC3
+    params['AX_CENTER'] = 1.5116        #DAC2 
     params['RANGE'] = 0.15
     params['STEP'] = 0.01
 
