@@ -168,9 +168,11 @@ class Transient:
         scan_e.join()
         scan_a.join()
         
+        self.e_max_I = scan_e.max_I
         self.e_max_x = scan_e.max_x
         self.e_max_y = scan_e.max_y
         
+        self.a_max_I = scan_a.max_I
         self.a_max_x = scan_a.max_x
         self.a_max_y = scan_a.max_y
     
@@ -194,6 +196,16 @@ class Transient:
                 except:
                     self.log_message("Stage movement error.")
                 
+                self.I_e = self.SMUServer_e.I
+                # self.I_a = self.SMUServer_a.I
+                
+                if self.I_e<(0.8*self.e_max_I):
+                    # Check current on E and A
+                    self.log_message("Checking for max current on E switch...")
+                    self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
+                    self.scan_mirror(k=15)
+                    self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
+                
                 # Buffer ramp DAC
                 br_data = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
                                                    params['DAC_INPUT_CH'],
@@ -207,8 +219,7 @@ class Transient:
                 in2 = br_data[1][0]*params['SENS']/10.0/params['GAIN']
                 in3 = br_data[2][0]*params['SENS']/10.0/params['GAIN']
                 in4 = br_data[3][0]*params['SENS']/10.0/params['GAIN']
-                self.I_e = self.SMUServer_e.I
-                # self.I_a = self.SMUServer_a.I
+                
                 self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
                                        in1, in2, in3, in4, delay_pos=0)
         
@@ -220,7 +231,7 @@ class Transient:
         # Start moving stage
         self.log_message("Moving to final position...")
         self.ds.gpib_write("1VA{:.6f}".format(params['STAGE_VEL']))
-        self.ds.gpib_write("1WT1000")
+        self.ds.gpib_write("WT1000")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][1]))
         self.ds.gpib_write("1WS1000")
         
@@ -294,31 +305,32 @@ class Transient:
         except KeyboardInterrupt:
             self.log_message("Sweep measurement interrupted.")
         
-        def scan_transient_temp_sweep(self,params):
-            temp_range = np.linspace(params['T_INITIAL'],params['T_FINAL'],params['T_STEPS'])
-            try:
-                for t in range(params['T_STEPS']):
-                    self.tempD4 = self.tempServer.tempD4
-                    self.tempD5 = self.tempServer.tempD5
-                    
-                    # Set temperature
-                    self.log_message("Setting temperature T = {:.2f} K...".format(temp_range[t]))
-                    self.ls.set_p(1,temp_range[t])
-                    if self.tempD4>self.tempD5+3.0:
-                        self.ls.set_p(2,temp_range[t]-3.0)
-                    time.sleep(60*2)
-                    
-                    self.scan_transient_sweep(params)
-                    
-            except KeyboardInterrupt:
-                self.log_message("Temp sweep measurement interrupted.")
+    def scan_transient_temp_sweep(self,params):
+        temp_range = np.linspace(params['T_INITIAL'],params['T_FINAL'],params['T_STEPS'])
+        try:
+            for t in range(params['T_STEPS']):
+                self.tempD4 = self.tempServer.tempD4
+                self.tempD5 = self.tempServer.tempD5
+                
+                # Set temperature
+                self.log_message("Setting temperature T = {:.2f} K...".format(temp_range[t]))
+                self.ls.set_p(1,temp_range[t])
+                if self.tempD4>(self.tempD5+3.0):
+                    self.ls.set_p(2,temp_range[t]-3.0)
+                    self.log_message("Setting output #2 set point: {:.3f}.".format(temp_range[t]-3.0))
+                time.sleep(60*2)
+                
+                self.scan_transient_sweep(params)
+                
+        except KeyboardInterrupt:
+            self.log_message("Temp sweep measurement interrupted.")
                 
             
 def main():
     
     # Define parameters
     params = dict()
-    params['MEASURE_MODE'] = 'SLOW'     # 'FAST' or 'SLOW'
+    params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
     params['FILENAME'] = "transient"
@@ -332,17 +344,17 @@ def main():
 
     params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
     params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
-    params['DAC_TIME'] = 220.0000          # s time taken by DAC for 40000 points
+    params['DAC_TIME'] = 168.0000          # s time taken by DAC for 40000 points
     params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
 
     params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
     
-    params['T_INITIAL'] = 0.0
-    params['T_FINAL'] = 0.0
-    params['T_STEPS'] = 1.0
+    params['T_INITIAL'] = 8.0
+    params['T_FINAL'] = 16.0
+    params['T_STEPS'] = 41
     
-    params['SWEEPS'] = 5                # Sweeps
+    params['SWEEPS'] = 4                # Sweeps
     params['AVGS'] = 200                # Averages
     params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
@@ -472,10 +484,10 @@ def main():
     scanTransient.scan_mirror()
     
     # Sweeps
-    scanTransient.scan_transient_sweep(params)
+    # scanTransient.scan_transient_sweep(params)
     
     # Temperature sweeps
-    # scanTransient.scan_transient_temp_sweep(params)
+    scanTransient.scan_transient_temp_sweep(params)
     
     # Kill Temperature server
     tempServer.stop_thread = True
