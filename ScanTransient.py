@@ -326,7 +326,9 @@ class Transient:
                 
                 # Rough Scans
                 self.log_message('Mid mirror Scan E and A...')
+                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
                 self.scan_mirror(k=5)
+                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
                 
                 self.scan_transient_sweep(params)
                 
