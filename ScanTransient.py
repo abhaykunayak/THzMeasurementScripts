@@ -178,10 +178,12 @@ class Transient:
         
         # Save max data
         self.e_max_I = scan_e.max_I
+        self.I_e = self.e_max_I
         self.e_max_x = scan_e.max_x
         self.e_max_y = scan_e.max_y
         
         self.a_max_I = scan_a.max_I
+        self.I_a = self.a_max_I
         self.a_max_x = scan_a.max_x
         self.a_max_y = scan_a.max_y
     
@@ -342,7 +344,7 @@ def main():
     params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
-    params['FILENAME'] = "transient"
+    params['FILENAME'] = "transient_op_60uW"
 
     params['DEPENDENTS'] = ['delay_mm', 'delay_ps']
     params['INDEPENDENTS'] = ['Lockin X [A]', 'Lockin Y [A]',
@@ -359,11 +361,11 @@ def main():
     params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
     
-    params['T_INITIAL'] = 13.4
-    params['T_FINAL'] = 16.0
-    params['T_STEPS'] = 27
+    params['T_INITIAL'] = 0.0
+    params['T_FINAL'] = 0.0
+    params['T_STEPS'] = 0
     
-    params['SWEEPS'] = 2                # Sweeps
+    params['SWEEPS'] = 5                # Sweeps
     params['AVGS'] = 200                # Averages
     params['FPOINTS'] = 10000           # Fast sweep points
     params['SAMPLING'] = 0.25            # DAC buffered ramp oversample
@@ -492,10 +494,10 @@ def main():
     scanTransient.scan_mirror(params)
     
     # Sweeps
-    # scanTransient.scan_transient_sweep(params)
+    scanTransient.scan_transient_sweep(params)
     
     # Temperature sweeps
-    scanTransient.scan_transient_temp_sweep(params)
+    # scanTransient.scan_transient_temp_sweep(params)
     
     # Kill Temperature server
     tempServer.stop_thread = True
