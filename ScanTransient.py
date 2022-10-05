@@ -152,7 +152,11 @@ class Transient:
                          self.I_e,self.I_a,delay_pos])
         self.dv.add(data)
         
-    def scan_mirror(self,k=1):
+    def scan_mirror(self,params,k=1):
+        # Ramp bias voltage
+        self.voltage_ramp_smu(self.smu_e, self.smu_a.read_v(), params['BIAS_E'])
+        self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
+        
         # Instatiate mirror scan object
         scan_e = MirrorScan.Scan('E',self.smu_e,self.dac_e,0,1,False)
         scan_a = MirrorScan.Scan('A',self.smu_a,self.dac_a,2,3,False)
@@ -169,6 +173,10 @@ class Transient:
         scan_e.join()
         scan_a.join()
         
+        # Ramp down bias on A
+        self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
+        
+        # Save max data
         self.e_max_I = scan_e.max_I
         self.e_max_x = scan_e.max_x
         self.e_max_y = scan_e.max_y
@@ -198,14 +206,7 @@ class Transient:
                     self.log_message("Stage movement error.")
                 
                 self.I_e = self.SMUServer_e.I
-                # self.I_a = self.SMUServer_a.I
-                
-                # if self.I_e<(0.8*self.e_max_I):
-                #     # Check current on E and A
-                #     self.log_message("Checking for max current on E switch...")
-                #     self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
-                #     self.scan_mirror(k=15)
-                #     self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
+                # self.I_a = self.SMUServer_a.I    
                 
                 # Buffer ramp DAC
                 br_data = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
@@ -282,9 +283,7 @@ class Transient:
                 
                 # Check current on E and A
                 self.log_message("Checking for max current on E switch...")
-                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
-                self.scan_mirror(k=15)
-                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
+                self.scan_mirror(params,k=15)
                 
                 # Setup DataVault file and Config file
                 self.log_message("Setting up datavault and config file...")
@@ -313,6 +312,7 @@ class Transient:
         temp_range = np.linspace(params['T_INITIAL'],params['T_FINAL'],params['T_STEPS'])
         try:
             for t in range(params['T_STEPS']):
+                self.log_message('Starting temperature sweep #: {} of {}'.format(t,params['T_STEPS']))
                 self.tempD4 = self.tempServer.tempD4
                 self.tempD5 = self.tempServer.tempD5
                 
@@ -326,10 +326,9 @@ class Transient:
                 
                 # Rough Scans
                 self.log_message('Mid mirror Scan E and A...')
-                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), params['BIAS_E'])
-                self.scan_mirror(k=5)
-                self.voltage_ramp_smu(self.smu_a, self.smu_a.read_v(), 0)
+                self.scan_mirror(params,k=5)
                 
+                # Transient
                 self.scan_transient_sweep(params)
                 
         except KeyboardInterrupt:
@@ -360,9 +359,9 @@ def main():
     params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
     
-    params['T_INITIAL'] = 8.0
+    params['T_INITIAL'] = 13.4
     params['T_FINAL'] = 16.0
-    params['T_STEPS'] = 81
+    params['T_STEPS'] = 27
     
     params['SWEEPS'] = 2                # Sweeps
     params['AVGS'] = 200                # Averages
@@ -383,10 +382,10 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3247       #DAC1
-    params['EX_CENTER'] = 4.6826         #DAC0
-    params['AY_CENTER'] = 0.4842        #DAC3
-    params['AX_CENTER'] = 1.5116        #DAC2 
+    params['EY_CENTER'] = -0.3230       #DAC1
+    params['EX_CENTER'] = 4.6783         #DAC0
+    params['AY_CENTER'] = 0.4819        #DAC3
+    params['AX_CENTER'] = 1.5126        #DAC2 
     params['RANGE'] = 0.15
     params['STEP'] = 0.01
 
@@ -485,13 +484,12 @@ def main():
     start = time.time()
     scanTransient.log_message('Measurement Started')
     
-    # Voltage ramp up on SMUs
+    # Voltage ramp up on E SMU
     scanTransient.voltage_ramp_smu(smu2400, smu2400.read_v(), params['BIAS_E'])
-    scanTransient.voltage_ramp_smu(smu2450, smu2450.read_v(), params['BIAS_E'])
     
     # Rough Scans
     scanTransient.log_message('Coarse mirror Scan E and A...')
-    scanTransient.scan_mirror()
+    scanTransient.scan_mirror(params)
     
     # Sweeps
     # scanTransient.scan_transient_sweep(params)
@@ -507,7 +505,7 @@ def main():
         scanTransient.SMUServer_e.stop_thread = True
         scanTransient.SMUServer_a.stop_thread = True
     except:
-        scanTransient.log_message("Dead already!.")
+        scanTransient.log_message("SMU servers are dead already!.")
         
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
