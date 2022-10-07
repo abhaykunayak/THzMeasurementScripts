@@ -114,6 +114,7 @@ class Transient:
     def init_delay_stage(self,params):
         # Delay stage settings
         self.log_message("Setting up the delay stage...")
+        self.ds.gpib_write("1MO1")
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1AC0.1")
         self.ds.gpib_write("1AG0.1")
@@ -302,6 +303,9 @@ class Transient:
                                                    6,
                                                    params['SAMPLING']*params['TIME_CONST']*1e6,
                                                    params['AVGS']))
+                # Clear DAC buffer
+                self.dac.stop_ramp()
+
                 if params['MEASURE_MODE'] == 'FAST':
                     self.scan_transient_fast(params)
                 else:
@@ -344,7 +348,7 @@ def main():
     params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
     params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
-    params['FILENAME'] = "transient_op_60uW"
+    params['FILENAME'] = "transient"
 
     params['DEPENDENTS'] = ['delay_mm', 'delay_ps']
     params['INDEPENDENTS'] = ['Lockin X [A]', 'Lockin Y [A]',
@@ -361,9 +365,9 @@ def main():
     params['TIME_CONST'] = 0.01         # s; Lockin
     params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
     
-    params['T_INITIAL'] = 0.0
-    params['T_FINAL'] = 0.0
-    params['T_STEPS'] = 0
+    params['T_INITIAL'] = 9.0
+    params['T_FINAL'] = 15.0
+    params['T_STEPS'] = 3
     
     params['SWEEPS'] = 5                # Sweeps
     params['AVGS'] = 200                # Averages
@@ -384,10 +388,10 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3230       #DAC1
-    params['EX_CENTER'] = 4.6783         #DAC0
-    params['AY_CENTER'] = 0.4819        #DAC3
-    params['AX_CENTER'] = 1.5126        #DAC2 
+    params['EY_CENTER'] = -0.3191       #DAC1
+    params['EX_CENTER'] = 4.6734         #DAC0
+    params['AY_CENTER'] = 0.4763        #DAC3
+    params['AX_CENTER'] = 1.5121        #DAC2 
     params['RANGE'] = 0.15
     params['STEP'] = 0.01
 
@@ -494,10 +498,10 @@ def main():
     scanTransient.scan_mirror(params)
     
     # Sweeps
-    scanTransient.scan_transient_sweep(params)
+    # scanTransient.scan_transient_sweep(params)
     
     # Temperature sweeps
-    # scanTransient.scan_transient_temp_sweep(params)
+    scanTransient.scan_transient_temp_sweep(params)
     
     # Kill Temperature server
     tempServer.stop_thread = True
