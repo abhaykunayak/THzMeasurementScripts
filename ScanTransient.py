@@ -54,6 +54,10 @@ class Transient:
         logging.info(msg_timestamp)
         print(msg_timestamp)
         
+    def wait_sec(self,t):
+        for i in range(t):
+            time.sleep(1)
+            
     def setup_logfile(self,params):
 
         print('[{}] Setting up datafile and logging...'.format(self.current_time())) 
@@ -128,7 +132,8 @@ class Transient:
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS1000")
-        time.sleep(30)
+        
+        self.wait_sec(30)
         
         # for i in range(10):
         #     try:
