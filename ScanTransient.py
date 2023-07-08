@@ -32,6 +32,7 @@ class Transient:
         self.SMUServer_e = 0
         self.I_e = 0
         self.I_a = 0
+        self.v_gate = 0
         
         
     def set_scan_params(self,params):
@@ -79,12 +80,29 @@ class Transient:
             yaml.dump(params, f, sort_keys=False, default_flow_style=False)
             self.log_message("Config file written.")
             
+    def get_DAC_time(self,params):
+        
+        br_start = time.time()
+        # Buffer ramp DAC
+        _ = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
+                                            params['DAC_INPUT_CH'],
+                                            [0.0],
+                                            [0.0],
+                                            params['FPOINTS'],
+                                            params['SAMPLING']*params['TIME_CONST']*1e6,
+                                            params["READINGS"]),dtype=np.float64)   
+        
+        br_end = time.time()
+        total_time = br_end-br_start
+        self.log_message("Finished reading buffer in {:.6f}s.".format(total_time))
+        
+        
     def setup_datavault(self,params):
         
         self.tempD4  = self.tempServer.tempD4
         
         self.dv.new(params['FILENAME']+'_T_{:.2f}'.format(self.tempD4)
-                    +'_sw_{:02d}'.format(self.idx), 
+                    +'_Vg_{:03d}mV'.format(int(self.v_gate*1e3))+'_sw_{:02d}'.format(self.idx), 
                     params['DEPENDENTS'], params['INDEPENDENTS'])
         
         self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
@@ -93,8 +111,8 @@ class Transient:
         self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
         self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
                                         ('delay_ps', 'Lockin Y'), 
-                                        ('delay_ps', 'Emitter Current'), 
-                                        ('delay_ps', 'AB Current')))
+                                        ('delay_ps', 'Input 2'), 
+                                        ('delay_ps', 'Input 3')))
     
     def setup_delay(self,delay_start,delay_end,pts):
         # Calculate delay
@@ -108,12 +126,26 @@ class Transient:
         if v_initial == v_final:
             return
         step = 10
+        smu.output_on()
         v_steps = np.linspace(v_initial, v_final, step)
         for i in range(step):
-            smu.set_v_meas_i(v_steps[i])
+            smu.set_volts(v_steps[i],1e-6)
             time.sleep(0.1)
         time.sleep(1)
         self.log_message("Voltage SMU ramp ended.")
+        
+    def voltage_ramp_dac(self,dac,ch,v_initial,v_final):
+        
+        self.log_message("Starting DAC voltage ramp on CH {}...".format(ch))
+        if v_initial == v_final:
+            return
+        step = 10
+        v_steps = np.linspace(v_initial, v_final, step)
+        for i in range(step):
+            dac.set_voltage(ch,v_steps[i])
+            time.sleep(0.1)
+        time.sleep(1)
+        self.log_message("DAC CH {} Voltage ramp ended.".format(ch))
     
     def init_delay_stage(self,params):
         # Delay stage settings
@@ -259,13 +291,30 @@ class Transient:
         self.log_message("Finished reading buffer in {:.6f}s.".format(br_end-br_start))
         
         # Save data tp Data Vault
+        br_data[0:2] = br_data[0:2]*params['SENS']/10.0/params['GAIN']
+        
+        # LX = np.array([br_data[0]*params['SENS']/10.0/params['GAIN']])
+        # LY = np.array([br_data[1]*params['SENS']/10.0/params['GAIN']])
+        # IN2 = np.array([br_data[2]])
+        # IN3 = np.array([br_data[3]])
+        # IN5 = np.array([br_data[4]])
+        # IN6 = np.array([br_data[5]])
+        # br_data_n = np.concatenate((LX, LY, IN2, IN3, IN5, IN6),axis=0)
+
+        # dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
+        #                           br_data*params['SENS']/10.0/params['GAIN'],
+        #                           np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
+        #                           np.ones((1,params['FPOINTS']))*self.tempServer.tempD5,
+        #                           np.ones((1,params['FPOINTS']))*self.I_e,
+        #                           np.ones((1,params['FPOINTS']))*self.I_a,
+        #                           np.ones((1,params['FPOINTS']))),axis=0).T
+        
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
-                                  br_data*params['SENS']/10.0/params['GAIN'],
+                                  br_data,
                                   np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
                                   np.ones((1,params['FPOINTS']))*self.tempServer.tempD5,
                                   np.ones((1,params['FPOINTS']))*self.I_e,
-                                  np.ones((1,params['FPOINTS']))*self.I_a,
-                                  np.ones((1,params['FPOINTS']))),axis=0).T
+                                  np.ones((1,params['FPOINTS']))*self.I_a),axis=0).T
         
         self.dv.add(dv_data)
             
@@ -280,6 +329,7 @@ class Transient:
     def scan_transient_sweep(self,params):
         try:
             for i in range(params['SWEEPS']):
+
                 # Sweep
                 self.log_message("Starting sweep #{:03d}...".format(i))
                 
@@ -290,8 +340,8 @@ class Transient:
                 self.init_stage_position(params)
                 
                 # Check current on E and A
-                self.log_message("Checking for max current on E switch...")
-                self.scan_mirror(params,k=15)
+                #self.log_message("Checking for max current on E switch...")
+                #self.scan_mirror(params,k=15)
                 
                 # Setup DataVault file and Config file
                 self.log_message("Setting up datavault and config file...")
@@ -330,8 +380,8 @@ class Transient:
                 # Set temperature
                 self.log_message("Setting temperature T = {:.2f} K...".format(temp_range[t]))
                 self.ls.set_p(1,temp_range[t])
-                self.log_message("Setting output #2 set point: {:.3f}.".format(temp_range[t]-3.0))
-                self.ls.set_p(2,temp_range[t]-3.0)
+                #self.log_message("Setting output #2 set point: {:.3f}.".format(temp_range[t]-3.0))
+                #self.ls.set_p(2,temp_range[t]-3.0)
 
                 time.sleep(60*2)
                 
@@ -344,7 +394,25 @@ class Transient:
                 
         except KeyboardInterrupt:
             self.log_message("Temp sweep measurement interrupted.")
+
+    def scan_transient_gate_sweep(self,params):
+        gate_range = np.linspace(params['V_GATE_I'],params['V_GATE_F'],params['V_GATE_STEPS'])
+        try:
+            for v in range(params['V_GATE_STEPS']):
+                self.log_message('Starting Gate sweep #: {} of {}'.format(v,gate_range[v]))
                 
+                # Set Gate Voltage
+                self.log_message("Setting Gate Voltage V = {:.2f} V...".format(gate_range[v]))
+                self.v_gate = gate_range[v]
+                self.voltage_ramp_dac(self.dac,params['DAC_OUTPUT_CH'],
+                                      self.dac.read_voltage(2),
+                                      gate_range[v])
+                
+                # Transient
+                self.scan_transient_sweep(params)
+                
+        except KeyboardInterrupt:
+            self.log_message("Gate sweep measurement interrupted.")                
             
 def main():
     
@@ -352,33 +420,38 @@ def main():
     params = dict()
     params['MEASURE_MODE'] = 'FAST'     # 'FAST' or 'SLOW'
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2022_09_21_TL2715_AKNDB010_1D"  
+    params['DATADIR'] = "2023_07_05_TeraLine"  
     params['FILENAME'] = "transient"
 
     params['DEPENDENTS'] = ['delay_mm', 'delay_ps']
     params['INDEPENDENTS'] = ['Lockin X [A]', 'Lockin Y [A]',
                               'Input 2 [V]', 'Input 3 [V]',
+                              'Input 5 [V]', 'Input 6 [V]',
                               'Temp A [K]', 'Temp B [K]', 
-                              'Emitter Current [A]', 'AB Current [A]',
-                              'Delay Pos [mm]']
+                              'Emitter Current [A]', 'AB Current [A]']
 
-    params['DELAY_RANGE_MM'] = [29,38]  # mm refl full: [29,37] | sample: [32,36] trans: [32,36]
-    params['DELAY_POINTS'] = 100*(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])+1        # normal = 100 pts/mm
-    params['DAC_TIME'] = 273.0000          # s time taken by DAC for 40000 points
-    params['STAGE_VEL'] = 9.0/params['DAC_TIME']          # mm/s
+    params['DELAY_RANGE_MM'] = [21,31]  # mm refl full: [21,31] | sample: [X,X]
+    params['DELAY_TRAVEL'] = params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0]
+    params['DELAY_POINTS'] = 100*params['DELAY_TRAVEL']+1        # normal = 100 pts/mm
+    params['DAC_TIME'] = 308.00000          # s 230 - 10000 points and [0,1,2,3]
+    params['STAGE_VEL'] = params['DELAY_TRAVEL']/params['DAC_TIME']          # mm/s
 
     params['TIME_CONST'] = 0.01         # s; Lockin
-    params['SENS'] = 0.05               # s; Lockin | full: 0.05 | sample: 0.005
+    params['SENS'] = 0.1               # s; Lockin | full: 0.05 | sample: 0.005
     
-    params['T_INITIAL'] = 9.0
-    params['T_FINAL'] = 15.0
-    params['T_STEPS'] = 3
+    params['V_GATE_I'] = 0                # Gate Voltage in V
+    params['V_GATE_F'] = 0                # Gate Voltage in V
+    params['V_GATE_STEPS'] = 1                # Gate Voltage in V
     
-    params['SWEEPS'] = 5                # Sweeps
-    params['AVGS'] = 200                # Averages
+    params['T_INITIAL'] = 95.0
+    params['T_FINAL'] = 120.0
+    params['T_STEPS'] = 5
+    
+    params['SWEEPS'] = 1                # Sweeps
+    params['AVGS'] = 200                # Averages #internal averging in arduino of 200, then print one number (this)
     params['FPOINTS'] = 10000           # Fast sweep points
-    params['SAMPLING'] = 0.25            # DAC buffered ramp oversample
-    params['READINGS'] = 6               # Readings
+    params['SAMPLING'] = 0.1            # DAC buffered ramp oversample
+    params['READINGS'] = 5               # Readings
 
     params['GAIN'] = 1e8                # TIA gain
     params['BIAS_E'] = 10               # V on emitter
@@ -393,20 +466,22 @@ def main():
     params['FILT_COUNT'] = 1            # 1 -- 100
 
     # Mirror
-    params['EY_CENTER'] = -0.3191       #DAC1
-    params['EX_CENTER'] = 4.6734         #DAC0
-    params['AY_CENTER'] = 0.4763        #DAC3
-    params['AX_CENTER'] = 1.5121        #DAC2 
-    params['RANGE'] = 0.15
+    params['MIRROR_SCAN'] = 1           # 
+    params['EY_CENTER'] = -0.323       # DAC1
+    params['EX_CENTER'] = 5.783        # DAC0
+    params['AY_CENTER'] = 0.478        # DAC3
+    params['AX_CENTER'] = 1.246        # DAC2 
+    params['RANGE'] = 0.2
     params['STEP'] = 0.01
 
     # DAC
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
-    params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
     params['DAC_CONV_TIME'] = 500       # ADC conversion time in us (82 -- 2686)
-    params['DAC_OUTPUT_CH'] = 2         # Output channel number
-    params['DAC_OUTPUT_CH_DUMMY'] = [0] # Dummy output channel number
-    params['DAC_INPUT_CH'] = [0,1,2,3]  # Input channel number
+    params['DAC_OUTPUT_CH'] = 0         # Output channel number
+    params['DAC_OUTPUT_CH_DUMMY'] = [3] # Dummy output channel number
+    params['DAC_INPUT_CH'] = [0,1,2,3,5,6]  # Input channel number
+    
+    params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
     params['DAC_CH_Y'] = 1
     params['DAC_CH_X'] = 0
 
@@ -498,29 +573,42 @@ def main():
     # Voltage ramp up on E SMU
     scanTransient.voltage_ramp_smu(smu2400, smu2400.read_v(), params['BIAS_E'])
     
-    # Rough Scans
-    scanTransient.log_message('Coarse mirror Scan E and A...')
-    scanTransient.scan_mirror(params)
-    
-    # Sweeps
-    # scanTransient.scan_transient_sweep(params)
-    
-    # Temperature sweeps
-    scanTransient.scan_transient_temp_sweep(params)
-    
-    # Kill Temperature server
-    tempServer.stop_thread = True
-    
     try:
-        # Kill SMU server
-        scanTransient.SMUServer_e.stop_thread = True
-        scanTransient.SMUServer_a.stop_thread = True
-    except:
-        scanTransient.log_message("SMU servers are dead already!.")
+        # Rough Scans
+        #scanTransient.log_message('Coarse mirror Scan E and A...')
+        #scanTransient.scan_mirror(params)
+        # Fine Scans
+        #scanTransient.log_message('Fine mirror Scan E and A...')
+        #scanTransient.scan_mirror(params,k=10)
         
+        # Sweeps
+        scanTransient.scan_transient_sweep(params)
+        
+        # Temperature sweeps - comment below to remove variable temperature scans
+        #scanTransient.scan_transient_temp_sweep(params)
+        
+        # Gate Sweeps
+        #scanTransient.scan_transient_gate_sweep(params)
+            
+        # Kill Temperature server
+        tempServer.stop_thread = True
+        
+        try:
+            # Kill SMU server
+            scanTransient.SMUServer_e.stop_thread = True
+            scanTransient.SMUServer_a.stop_thread = True
+        except:
+            scanTransient.log_message("SMU servers are dead already!.")
+            
+    except:
+        scanTransient.log_message("Safe exit in process.")
+    
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
-        
+    
+    # Gate Voltage ramp down
+    scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],dac.read_voltage(2),0)
+    
     # Voltage ramp down
     scanTransient.voltage_ramp_smu(smu2400, smu2400.read_v(), 0)
     scanTransient.voltage_ramp_smu(smu2450, smu2450.read_v(), 0)

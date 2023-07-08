@@ -36,7 +36,7 @@ class Scan(Thread):
         print('[{}] Ramping voltage...'.format(self.current_time()))
         self.smu.output_on()
         for i in range(step):
-            self.smu.set_volts(v_steps[i], 5e-6)
+            self.smu.set_volts(v_steps[i], 10e-6)
             time.sleep(0.1)
         print('[{}] Voltage ramp completed.'.format(self.current_time()))
         time.sleep(1)
@@ -104,15 +104,15 @@ def main():
     params = dict()
 
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"                               
-    params['DATADIR'] = "2022_09_07_TL2715_AKNDB010_5E"                  
-    params['FILENAME'] = "T_303K"
+    params['DATADIR'] = "2023_07_05_TeraLine"                  
+    params['FILENAME'] = "TeraLine_z_adjusted"
         
-    params['EY_CENTER'] = -0.3534       #DAC1 refl: -0.3; trans: -0.35
-    params['EX_CENTER'] = 4.8381        #DAC0 refl: 5.16; trans: 6.25
-    params['AY_CENTER'] = 0.5494        #DAC3
-    params['AX_CENTER'] = 1.5460        #DAC2 
-    params['RANGE'] = 0.2
-    params['STEP'] = 0.01
+    params['EY_CENTER'] = -0.323         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.783          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.478          #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 1.246          #DAC2 (old: 1.3215)
+    params['RANGE'] = 0.04               # usual: 0.2
+    params['STEP'] = 0.001               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
     params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
@@ -121,15 +121,15 @@ def main():
 
     params['BIAS'] = 10
     params['DELAY'] = 0.05
-    params['SMU_RANGE'] = 10e-6         # current range on K2450
+    params['SMU_RANGE'] = 100e-6         # current range on K2450
 
-    params['COMPL'] = 5e-6
+    params['COMPL'] = 20e-6
     params['NPLC'] = 1                  # 0.1 -- 10
     params['FILT'] = "OFF"              # 'ON' or 'OFF'
     params['FILT_TYPE'] = "REPeat"      # 'REPeat' or 'MOVing'
     params['FILT_COUNT'] = 1            # 1 -- 100
 
-    params["AUTOZOOM"] = True
+    params["AUTOZOOM"] = False
     
     # Initialize labrad and servers
     cxn_e = labrad.connect()
