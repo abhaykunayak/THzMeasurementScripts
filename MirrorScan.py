@@ -111,7 +111,7 @@ def main():
     params['EX_CENTER'] = 5.783          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
     params['AY_CENTER'] = 0.478          #DAC3 (old: 0.5210)
     params['AX_CENTER'] = 1.246          #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.04               # usual: 0.2
+    params['RANGE'] = 0.2               # usual: 0.2
     params['STEP'] = 0.001               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal

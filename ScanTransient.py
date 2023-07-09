@@ -572,7 +572,7 @@ def main():
     
     # Voltage ramp up on E SMU
     scanTransient.voltage_ramp_smu(smu2400, smu2400.read_v(), params['BIAS_E'])
-    
+    scanTransient.voltage_ramp_dac(dac,0,0,10)
     try:
         # Rough Scans
         #scanTransient.log_message('Coarse mirror Scan E and A...')
@@ -612,6 +612,7 @@ def main():
     # Voltage ramp down
     scanTransient.voltage_ramp_smu(smu2400, smu2400.read_v(), 0)
     scanTransient.voltage_ramp_smu(smu2450, smu2450.read_v(), 0)
+    scanTransient.voltage_ramp_dac(dac,0,10,0)
     
     # Measurements end
     scanTransient.log_message("Measurement Ended.")
