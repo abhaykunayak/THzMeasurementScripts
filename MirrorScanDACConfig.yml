@@ -2,27 +2,32 @@ ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
 DATADIR: '2023_07_05_TeraLine'
 FILENAME: "MirrorScanDAC"
 
-EX_CENTER: 5.748   
-EY_CENTER: -0.594
-AX_CENTER: 1.246
-AY_CENTER: 0.478
+EX_CENTER: 5.762   
+EY_CENTER: -0.588
+AX_CENTER: 1.85
+AY_CENTER: 0.48
 RANGE: 0.1
-STEP: 0.002
+STEP: 0.005
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
-DAC_D_CH: 7
+DAC_D_E_OUT_CH: 0
+DAC_D_A_OUT_CH: 1
+DAC_D_E_IN_CH: 3
+DAC_D_A_IN_CH: 7
 DAC_D_DUMMY_CH: 3
 
-AVGS: 10
+AVGS: 1
 SAMPLING: 1
 READINGS: 10
 
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_M_CH:
-- 0         # X
-- 1         # Y
+- 0         # X - E
+- 1         # Y - E
+- 2         # X - A
+- 3         # Y - A
 
-BIAS: 10
+BIAS: 10.0
 DELAY: 0.1
 
 
