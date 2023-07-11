@@ -204,9 +204,10 @@ class Transient:
     
     def scan_transient_fast(self,params):
         
+        stage_vel = (params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])/params['DAC_TIME']
         # Start moving stage
         self.log_message("Moving to final position...")
-        self.ds.gpib_write("1VA{:.6f}".format(params['STAGE_VEL']))
+        self.ds.gpib_write("1VA{:.6f}".format(stage_vel))
         self.ds.gpib_write("WT1000")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][1]))
         self.ds.gpib_write("1WS1000")
