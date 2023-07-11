@@ -37,10 +37,9 @@ class Scan(Thread):
         self.dac_d_dummy_ch = params['DAC_D_DUMMY_CH']
         if self.spot=='E':
             self.dac_m_ch = params['DAC_M_CH'][0:2]
-            self.dac_d_ch = params['DAC_D_E_IN_CH']
         else:
             self.dac_m_ch = params['DAC_M_CH'][2:4]
-            self.dac_d_ch = params['DAC_D_A_IN_CH']
+        self.dac_d_ch = params[spot]['DAC_D_IN_CH']
 
         self.delay = params['DELAY']
         self.max_I = 0
@@ -145,6 +144,62 @@ class Scan(Thread):
         self.dac_m.set_voltage(self.dac_m_ch[1], self.max_y)
         
         return
+def scan_mirror(params,spot):
+    # Initialize labrad and servers
+    cxn_m = labrad.connect()
+    cxn_d = labrad.connect()
+        
+    # DAC-ADC for mirrors
+    dac_m = cxn_m.dac_adc
+    dac_m.select_device(params['DAC_MIRROR'])
+    
+    # DAC-ADC for switch
+    dac_d = cxn_d.dac_adc
+    dac_d.select_device(params['DAC_DATA'])
+   
+    # Data vault
+    dv = cxn_m.data_vault()
+    
+    # Change to data directory
+    dv.cd(params['DATADIR'])
+    
+    # Create new data file
+    dv.new('{}_'.format(spot)+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    
+    # Instatiate mirror scan object
+    scan = Scan(params,
+                  spot,
+                  dac_d,
+                  dac_m,
+                  True)
+    
+    # DataVault File
+    scan.set_datafile(dv)
+    
+    # Coarse
+    scan.set_scan_range(params[spot]['X_CENTER'],params[spot]['Y_CENTER'], params['RANGE'],params['STEP'])
+    
+    # Measurement
+    start = time.time()
+    print("[{}] Estimated total time: {:.0f} s"
+          .format(scan.current_time(),
+                  4.5*params['DELAY']*(params['RANGE']*params['RANGE'])/(params['STEP']*params['STEP'])))
+    
+    # Voltage ramp
+    scan.voltage_ramp(params[spot]['DAC_D_OUT_CH'], 0, params['BIAS'])
+
+    # Scan the Mirror
+    scan.start()
+    
+    # Wait to finish scan
+    scan.join()
+    
+    # Voltage ramp doen
+    scan.voltage_ramp(params[spot]['DAC_D_OUT_CH'], params['BIAS'], 0)
+    
+    # Measurements ended
+    end = time.time()
+    print("[{}] DONE! Time Consumption: {:.1f} s".format(scan.current_time(),end-start) )
 
 def main():
     # Load config file
@@ -153,79 +208,7 @@ def main():
     with open(os.path.realpath(CONFIG_FILENAME),'r') as f:
         params = yaml.safe_load(f)
 
-    # Initialize labrad and servers
-    cxn_e = labrad.connect()
-    cxn_a = labrad.connect()
-    cxn_d = labrad.connect()
-        
-    # DAC-ADC for mirrors
-    dac_e = cxn_e.dac_adc
-    dac_e.select_device(params['DAC_MIRROR'])
-    
-    dac_a = cxn_a.dac_adc
-    dac_a.select_device(params['DAC_MIRROR'])
-    
-    # DAC-ADC for switch
-    dac_d = cxn_d.dac_adc
-    dac_d.select_device(params['DAC_DATA'])
-   
-    # Data vault
-    dv_e = cxn_e.data_vault()
-    dv_a = cxn_a.data_vault()
-    
-    # Change to data directory
-    dv_e.cd(params['DATADIR'])
-    dv_a.cd(params['DATADIR'])
-    
-    # Create new data file
-    dv_e.new('E_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-    dv_a.new('A_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-    
-    # Instatiate mirror scan object
-    scan_e = Scan(params,
-                  'E',
-                  dac_d,
-                  dac_e,
-                  True)
-    scan_a = Scan(params,
-                'A',
-                dac_d,
-                dac_e,
-                True)
-    
-    # DataVault File
-    scan_e.set_datafile(dv_e)
-    scan_a.set_datafile(dv_a)
-    
-    # Coarse
-    scan_e.set_scan_range(params['EX_CENTER'],params['EY_CENTER'], params['RANGE'],params['STEP'])
-    scan_a.set_scan_range(params['AX_CENTER'],params['AY_CENTER'], params['RANGE'],params['STEP'])
-    
-    # Measurement
-    start = time.time()
-    print("[{}] Estimated total time: {:.0f} s"
-          .format(scan_e.current_time(),
-                  4.5*params['DELAY']*(params['RANGE']*params['RANGE'])/(params['STEP']*params['STEP'])))
-    
-    # Voltage ramp
-    #scan_e.voltage_ramp(params['DAC_D_E_OUT_CH'], 0, params['BIAS'])
-    scan_a.voltage_ramp(params['DAC_D_A_OUT_CH'], 0, params['BIAS'])
-
-    # Scan the Mirror
-    #scan_e.start()
-    scan_a.start()
-    
-    # Wait to finish scan
-    #scan_e.join()
-    scan_a.join()
-    
-    # Voltage ramp doen
-    #scan_e.voltage_ramp(params['DAC_D_E_OUT_CH'], params['BIAS'], 0)
-    scan_a.voltage_ramp(params['DAC_D_A_OUT_CH'], params['BIAS'], 0)
-    
-    # Measurements ended
-    end = time.time()
-    print("[{}] DONE! Time Consumption: {:.1f} s".format(scan_e.current_time(),end-start) )
+    scan_mirror(params,'E')
 
 if __name__ == '__main__':
     main()
