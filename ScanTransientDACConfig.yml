@@ -15,8 +15,6 @@ INDEPENDENTS:
 - Input 6 [V]
 - Temp A [K]
 - Temp B [K]
-- Emitter Current [A]
-- AB Current [A]
 
 DELAY_RANGE_MM:
 - 21
@@ -70,8 +68,8 @@ DAC_INPUT_CH:
 - 1
 - 2
 - 3
-- 5
 - 6
+- 7
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_CH_Y: 1
 DAC_CH_X: 0

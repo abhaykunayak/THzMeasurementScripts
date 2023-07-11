@@ -230,9 +230,8 @@ class Transient:
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
                                   br_data,
                                   np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
-                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD5,
-                                  np.ones((1,params['FPOINTS']))*self.I_e,
-                                  np.ones((1,params['FPOINTS']))*self.I_a),axis=0).T
+                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD5
+                                  ),axis=0).T
         
         self.dv.add(dv_data)
         self.save_to_mat(dv_data)
