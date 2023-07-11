@@ -208,7 +208,7 @@ def main():
     with open(os.path.realpath(CONFIG_FILENAME),'r') as f:
         params = yaml.safe_load(f)
 
-    scan_mirror(params,'E')
+    scan_mirror(params,'A')
 
 if __name__ == '__main__':
     main()
