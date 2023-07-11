@@ -132,7 +132,7 @@ class Scan(Thread):
         # Save to *.mat format
         self.save_to_mat(x_rng_idx,y_rng_idx,xv,yv,currentRead)
 
-        currentRead = -gaussian_filter(currentRead, sigma=1)
+        currentRead = np.abs(gaussian_filter(currentRead, sigma=1))
         self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
