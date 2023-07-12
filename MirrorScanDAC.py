@@ -57,7 +57,7 @@ class Scan(Thread):
             self.dac_d.set_voltage(dac_ch,v_steps[i])
             time.sleep(self.delay)
         print('[{}] Voltage ramp completed.'.format(self.current_time()))
-        time.sleep(self.delay)
+        time.sleep(self.delay*5)
         
     def current_time(self):
         now = datetime.now()
@@ -132,7 +132,7 @@ class Scan(Thread):
         # Save to *.mat format
         self.save_to_mat(x_rng_idx,y_rng_idx,xv,yv,currentRead)
 
-        currentRead = np.abs(gaussian_filter(currentRead, sigma=1))
+        currentRead = gaussian_filter(currentRead, sigma=1)
         self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
@@ -142,8 +142,8 @@ class Scan(Thread):
         
         self.dac_m.set_voltage(self.dac_m_ch[0], self.max_x)
         self.dac_m.set_voltage(self.dac_m_ch[1], self.max_y)
-        
         return
+    
 def scan_mirror(params,spot):
     # Initialize labrad and servers
     cxn_m = labrad.connect()
@@ -177,13 +177,14 @@ def scan_mirror(params,spot):
     scan.set_datafile(dv)
     
     # Coarse
-    scan.set_scan_range(params[spot]['X_CENTER'],params[spot]['Y_CENTER'], params['RANGE'],params['STEP'])
+    scan.set_scan_range(params[spot]['X_CENTER'],params[spot]['Y_CENTER'], 
+                        params[spot]['RANGE'],params[spot]['STEP'])
     
     # Measurement
     start = time.time()
     print("[{}] Estimated total time: {:.0f} s"
           .format(scan.current_time(),
-                  4.5*params['DELAY']*(params['RANGE']*params['RANGE'])/(params['STEP']*params['STEP'])))
+                  4.5*params['DELAY']*(params[spot]['RANGE']**2)/(params[spot]['STEP']**2)))
     
     # Voltage ramp
     scan.voltage_ramp(params[spot]['DAC_D_OUT_CH'], 0, params['BIAS'])
