@@ -73,66 +73,88 @@ class Scan(Thread):
     def set_datafile(self,dv):
         self.dv = dv
         
-    def save_to_datavault(self,x,y,I):
+    def save_to_datavault(self,s,x,y,I):
+        Ns = np.arange(np.size(s))
+        Nx = np.arange(np.size(x,1))
+        Ny = np.arange(np.size(y,2))
+        
         if self.save_data:
-                data = np.column_stack((np.ndarray.flatten(x),
-                                        np.ndarray.flatten(y),
-                                         np.ndarray.flatten(I)))
-                self.dv.add(data)
-
-    def save_to_mat(self,x_idx,y_idx,x,y,I):
-        if self.save_data:
-                print('[{}] Saving to *.mat...'.format(self.current_time()))
-                mesh = np.meshgrid(x_idx,y_idx,indexing='ij')
+                print('[{}] Saving to datavault...'.format(self.current_time()))
+                mesh = np.meshgrid(Ns,Nx,Ny,indexing='ij')
                 data = np.column_stack((np.ndarray.flatten(mesh[0]),
                                         np.ndarray.flatten(mesh[1]),
+                                        np.ndarray.flatten(mesh[2]),
                                         np.ndarray.flatten(x),
                                         np.ndarray.flatten(y),
-                                         np.ndarray.flatten(I)))
+                                        np.ndarray.flatten(I)))
+                self.dv.add(data)
+
+    def save_to_mat(self,s,x,y,I):
+        Ns = np.arange(np.size(s))
+        Nx = np.arange(np.size(x,1))
+        Ny = np.arange(np.size(y,2))
+        if self.save_data:
+                print('[{}] Saving to *.mat...'.format(self.current_time()))
+                mesh = np.meshgrid(Ns,Nx,Ny,indexing='ij')
+                data = np.column_stack((
+                        np.ndarray.flatten(mesh[0]),
+                        np.ndarray.flatten(mesh[1]),
+                        np.ndarray.flatten(mesh[2]),
+                        np.ndarray.flatten(x),
+                        np.ndarray.flatten(y),
+                        np.ndarray.flatten(I)))
                 sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
                             {'data':data})
         
     def run(self):
+        # Sweeps
+        N = self.params['SWEEPS']
+        swp = np.arange(N)
+
         # Scan range
         x_rng = np.linspace((self.x_center-self.scan_range/2),(self.x_center+self.scan_range/2),
                             int(self.scan_range/self.scan_step)+1)
         y_rng = np.linspace((self.y_center-self.scan_range/2),(self.y_center+self.scan_range/2),
                             int(self.scan_range/self.scan_step)+1)
-        x_rng_idx = np.arange(np.size(x_rng))
-        y_rng_idx = np.arange(np.size(y_rng))
         
-        currentRead = np.zeros((len(x_rng),len(y_rng)),dtype=float)
-        xv = np.zeros((len(x_rng),len(y_rng)),dtype=float)
-        yv = np.zeros((len(x_rng),len(y_rng)),dtype=float)
+        currentRead = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
+        xv = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
+        yv = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
         
-        # scan in X
-        for i in range(len(x_rng)):
-            self.dac_m.set_voltage(self.dac_m_ch[0], x_rng[i])
-            
-            percent = (x_rng[i] - np.min(x_rng))/(np.max(x_rng) - np.min(x_rng))
-            print("[{}] Scanning {} {:.2f} % complete".format(
-                self.current_time(),self.spot,100*percent))
-        
-            # scan in Y    
-            for j in range(len(y_rng)):
-                self.dac_m.set_voltage(self.dac_m_ch[1], y_rng[j])
-                xv[i][j] = x_rng[i]
-                yv[i][j] = y_rng[j]
-                currentRead[i][j] = np.mean(self.dac_d.buffer_ramp(
-                    [self.dac_d_dummy_ch],
-                    [self.dac_d_ch],
-                    [0.0],
-                    [0.0],
-                    self.params['AVGS'],
-                    1e-3*1e6,
-                    self.params['READINGS']))
+        for k in swp:
+            # Sweep
+            print("[{}] Sweep # {} out of {}.".format(
+                self.current_time(),k+1,N))
+            # def sweep action
+
+            # scan in X
+            for i in range(len(x_rng)):
+                self.dac_m.set_voltage(self.dac_m_ch[0], x_rng[i])
+                
+                percent = (x_rng[i] - np.min(x_rng))/(np.max(x_rng) - np.min(x_rng))
+                print("[{}] Scanning {} {:.2f} % complete".format(
+                    self.current_time(),self.spot,100*percent))
+
+                # scan in Y    
+                for j in range(len(y_rng)):
+                    self.dac_m.set_voltage(self.dac_m_ch[1], y_rng[j])
+                    xv[k][i][j] = x_rng[i]
+                    yv[k][i][j] = y_rng[j]
+                    currentRead[k][i][j] = np.mean(self.dac_d.buffer_ramp(
+                        [self.dac_d_dummy_ch],
+                        [self.dac_d_ch],
+                        [0.0],
+                        [0.0],
+                        self.params['AVGS'],
+                        1e-3*1e6,
+                        self.params['READINGS']))
         
         # Save to datavault
-        self.save_to_datavault(xv, yv, currentRead)
+        self.save_to_datavault(swp, xv, yv, currentRead)
         # Save to *.mat format
-        self.save_to_mat(x_rng_idx,y_rng_idx,xv,yv,currentRead)
+        self.save_to_mat(swp, xv, yv, currentRead)
 
-        currentRead = gaussian_filter(currentRead, sigma=1)
+        currentRead = gaussian_filter(currentRead[-1], sigma=1)
         self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
@@ -143,6 +165,10 @@ class Scan(Thread):
         self.dac_m.set_voltage(self.dac_m_ch[0], self.max_x)
         self.dac_m.set_voltage(self.dac_m_ch[1], self.max_y)
         return
+
+    def new_method(self, x_rng, y_rng):
+        x_rng_idx = np.arange(np.size(x_rng))
+        y_rng_idx = np.arange(np.size(y_rng))
     
 def scan_mirror(params,spot):
     # Initialize labrad and servers
@@ -152,10 +178,11 @@ def scan_mirror(params,spot):
     # DAC-ADC for mirrors
     dac_m = cxn_m.dac_adc
     dac_m.select_device(params['DAC_MIRROR'])
-    
+
     # DAC-ADC for switch
     dac_d = cxn_d.dac_adc
     dac_d.select_device(params['DAC_DATA'])
+    dac_d.initialize()
    
     # Data vault
     dv = cxn_m.data_vault()
@@ -164,7 +191,9 @@ def scan_mirror(params,spot):
     dv.cd(params['DATADIR'])
     
     # Create new data file
-    dv.new('{}_'.format(spot)+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    dv.new('{}_'.format(spot)+params['FILENAME'], 
+           ['IDX 0 [AU]', 'IDX 1 [AU]', 'IDX 2 [AU]', 'X Pos [V]', 'Y Pos [V]'], 
+           ['I Measure [A]'])
     
     # Instatiate mirror scan object
     scan = Scan(params,
@@ -184,7 +213,7 @@ def scan_mirror(params,spot):
     start = time.time()
     print("[{}] Estimated total time: {:.0f} s"
           .format(scan.current_time(),
-                  4.5*params['DELAY']*(params[spot]['RANGE']**2)/(params[spot]['STEP']**2)))
+                  0.04*(params[spot]['RANGE']**2)/(params[spot]['STEP']**2)))
     
     # Voltage ramp
     scan.voltage_ramp(params[spot]['DAC_D_OUT_CH'], 0, params['BIAS'])
