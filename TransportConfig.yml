@@ -1,0 +1,33 @@
+ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
+DATADIR: '2023_07_19_AKN_DMLG_08'
+FILENAME: "transport"
+
+DEPENDENTS:
+- SWEEP
+- V_GATE
+INDEPENDENTS:
+- Lockin X [A]
+- Lockin Y [A]
+
+LIA:
+  TIME_CONST: 0.1
+  SENS: 0.5e-3
+  FREQ: 17.7777
+  AMP: 1.0
+
+DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
+DAC_CONV_TIME: 500
+SAMPLING: 0.1
+AVGS: 100
+
+SWEEPS: 10
+
+V_GATE_CH: 1
+DAC_IN_CH:
+- 6
+- 7
+
+V_GATE_I: -0.5
+V_GATE_F: 0.5
+V_GATE_STEPS: 100
+
