@@ -124,11 +124,11 @@ class Transient:
         self.log_message("Starting DAC voltage ramp on CH {}...".format(ch))
         if v_initial == v_final:
             return
-        step = 10
+        step = 20
         v_steps = np.linspace(v_initial, v_final, step)
         for i in range(step):
             dac.set_voltage(ch,v_steps[i])
-            time.sleep(0.1)
+            time.sleep(0.2)
         time.sleep(1)
         self.log_message("DAC CH {} Voltage ramp ended.".format(ch))
     
@@ -286,8 +286,23 @@ class Transient:
                     self.scan_transient(params)
                 
         except KeyboardInterrupt:
-            self.log_message("Sweep measurement interrupted.")           
-            
+            self.log_message("Sweep measurement interrupted.")
+
+    def scan_transient_gate(self,params):
+        v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
+                            params['V_GATE_STEPS']+1)
+        # Gate voltage ramp
+        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],0,v_rng[0])
+
+        for i in v_rng:
+            # Gate Voltage
+            self.log_message("Setting gate voltage: {:.3f}...".format(i))
+            self.v_gate = i
+            self.scan_transient_sweep(params)
+         
+        # Gate voltage ramp
+        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],v_rng[-1],0)
+
 def main():
     
     # Load config file
@@ -375,8 +390,11 @@ def main():
         #scanTransient.scan_mirror(params,k=10)
         
         # Sweeps
-        scanTransient.scan_transient_sweep(params)
-            
+        #scanTransient.scan_transient_sweep(params)
+
+        # Gate
+        scanTransient.scan_transient_gate(params)
+
         # Kill Temperature server
         tempServer.stop_thread = True
             
@@ -386,12 +404,9 @@ def main():
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
     
-    # Gate Voltage ramp down
-    scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],params['BIAS_E'],0)
-    
     # Voltage ramp down
-    scanTransient.voltage_ramp_dac(dac,0,10,0)
-    
+    scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],params['BIAS_E'],0)
+
     # Measurements end
     scanTransient.log_message("Measurement Ended.")
     end = time.time()

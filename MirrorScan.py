@@ -104,15 +104,15 @@ def main():
     params = dict()
 
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2023_07_05_TeraLine"                  
-    params['FILENAME'] = "MirrorScanDAC"
+    params['DATADIR'] = "2023_07_19_AKN_DMLG_08"                  
+    params['FILENAME'] = "MirrorScanSMU"
         
-    params['EY_CENTER'] = -0.323         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.783          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.478          #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 1.246          #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.2               # usual: 0.2
-    params['STEP'] = 0.01               # usual: 0.01
+    params['EY_CENTER'] = 0.1515         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.4990          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.5470          #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 0.9630          #DAC2 (old: 1.3215)
+    params['RANGE'] = 0.05               # usual: 0.2
+    params['STEP'] = 0.005               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
     params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
