@@ -8,15 +8,19 @@ Created on Fri Sep  9 20:01:38 2022
 import time
 import labrad
 import numpy as np
+import scipy.io as sio
 from datetime import datetime
 from threading import Thread
 from scipy.ndimage import gaussian_filter
 
 class Scan(Thread):
     
-    def __init__(self,spot,smu,dac,dac_ch_x,dac_ch_y,save_data=False):
+    def __init__(self,params,spot,smu,dac,dac_ch_x,dac_ch_y,save_data=False):
         Thread.__init__(self)
         self.daemon = True
+        self.rootdir = params['ROOTDIR']
+        self.datadir = params['DATADIR']
+        self.datapath = self.rootdir+"\\"+self.datadir+".dir"
         self.save_data = save_data
         self.spot = spot
         self.smu = smu
@@ -59,7 +63,23 @@ class Scan(Thread):
         if self.save_data:
                 data = np.array([x, y, I])
                 self.dv.add(data)
-        
+    
+    def save_to_mat(self,x,y,I):
+        Nx = np.arange(np.size(x))
+        Ny = np.arange(np.size(y))
+        if self.save_data:
+                print('[{}] Saving to *.mat...'.format(self.current_time()))
+                mesh = np.meshgrid(Nx,Ny,indexing='ij')
+                mesh_data = np.meshgrid(x,y,indexing='ij')
+                data = np.column_stack((
+                        np.ndarray.flatten(mesh[0]),
+                        np.ndarray.flatten(mesh[1]),
+                        np.ndarray.flatten(mesh_data[0]),
+                        np.ndarray.flatten(mesh_data[1]),
+                        np.ndarray.flatten(I)))
+                sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
+                            {'data':data})
+                
     def run(self):
 
         # Scan range
@@ -85,6 +105,7 @@ class Scan(Thread):
                 currentRead[i][j] = self.smu.read_i()
                 self.save_to_datavault(x_rng[i], y_rng[j], currentRead[i][j])
                 
+        self.save_to_mat(x_rng,y_rng,currentRead)
         currentRead = gaussian_filter(currentRead, sigma=1)
         self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
@@ -107,12 +128,12 @@ def main():
     params['DATADIR'] = "2023_07_19_AKN_DMLG_08"                  
     params['FILENAME'] = "MirrorScanSMU"
         
-    params['EY_CENTER'] = 0.1515         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.4990          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.5470          #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 0.9630          #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.05               # usual: 0.2
-    params['STEP'] = 0.005               # usual: 0.01
+    params['EY_CENTER'] = -0.1850         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.0200          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.5430          #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 0.9845          #DAC2 (old: 1.3215)
+    params['RANGE'] = 0.02               # usual: 0.2
+    params['STEP'] = 0.001               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
     params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
@@ -173,8 +194,8 @@ def main():
     dv_a.new('A_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
     
     # Instatiate mirror scan object
-    scan_e = Scan('E',smu2400,dac_e,0,1,True)
-    scan_a = Scan('A',smu2450,dac_a,2,3,True)
+    scan_e = Scan(params,'E',smu2400,dac_e,0,1,True)
+    scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
     
     # DataVault File
     scan_e.set_datafile(dv_e)
