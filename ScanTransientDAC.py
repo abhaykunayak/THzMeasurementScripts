@@ -297,6 +297,7 @@ class Transient:
         for i in v_rng:
             # Gate Voltage
             self.log_message("Setting gate voltage: {:.3f}...".format(i))
+            self.dac.set_voltage(params['V_GATE_CH'],i)
             self.v_gate = i
             self.scan_transient_sweep(params)
          
@@ -390,7 +391,7 @@ def main():
         #scanTransient.scan_mirror(params,k=10)
         
         # Sweeps
-        #scanTransient.scan_transient_sweep(params)
+        # scanTransient.scan_transient_sweep(params)
 
         # Gate
         scanTransient.scan_transient_gate(params)
