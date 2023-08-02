@@ -120,7 +120,7 @@ class Scan(Thread):
         currentRead = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
         xv = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
         yv = np.zeros((N,len(x_rng),len(y_rng)),dtype=float)
-        
+
         for k in swp:
             # Sweep
             print("[{}] Sweep # {} out of {}.".format(
@@ -165,10 +165,6 @@ class Scan(Thread):
         self.dac_m.set_voltage(self.dac_m_ch[0], self.max_x)
         self.dac_m.set_voltage(self.dac_m_ch[1], self.max_y)
         return
-
-    def new_method(self, x_rng, y_rng):
-        x_rng_idx = np.arange(np.size(x_rng))
-        y_rng_idx = np.arange(np.size(y_rng))
     
 def scan_mirror(params,spot):
     # Initialize labrad and servers

@@ -303,7 +303,7 @@ class Transient:
          
         # Gate voltage ramp
         self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],v_rng[-1],0)
-
+        
 def main():
     
     # Load config file
@@ -391,12 +391,12 @@ def main():
         #scanTransient.scan_mirror(params,k=10)
         
         # Sweeps
-        # scanTransient.scan_transient_sweep(params)
+        scanTransient.scan_transient_sweep(params)
 
         # Gate
-        scanTransient.scan_transient_gate(params)
+        # scanTransient.scan_transient_gate(params)
 
-        # Kill Temperature server
+        # Kill Temperature serverp
         tempServer.stop_thread = True
             
     except:
