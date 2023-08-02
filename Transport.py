@@ -12,15 +12,19 @@ class Transport(Thread):
     
     def __init__(self,
                  params,
-                 dac):
+                 dac,
+                 ls):
         
         Thread.__init__(self)
         self.daemon = True
         self.params = params
         self.dac = dac
+        self.ls = ls
         self.rootdir = params['ROOTDIR'][2:-1]
         self.datadir = params['DATADIR']
         self.datapath = self.rootdir+"\\"+self.datadir+".dir"
+        self.tempD4 = 0
+        self.tempD5 = 0
             
     def setup_datavault(self,params, dv):
         
@@ -58,7 +62,11 @@ class Transport(Thread):
         
         for i in swp:
             print("Starting sweep: {} out of {}...".format(i+1,params['SWEEPS']))
-
+            
+            # Measure temperature
+            self.tempD4 = float(self.ls.read_temp('D4'))
+            self.tempD5 = float(self.ls.read_temp('D5'))
+            
             # Gate voltage ramp
             self.voltage_ramp_dac(params['V_GATE_CH'],0,v_rng[0])
 
@@ -77,7 +85,9 @@ class Transport(Thread):
         
             # Format data
             data = np.concatenate(([np.ones_like(v_rng)*i],[v_rng],
-                                br_data*params['LIA']['SENS']/10.0),axis=0).T
+                                br_data*params['LIA']['SENS']/10.0,
+                                [np.ones_like(v_rng)*self.tempD4],
+                                [np.ones_like(v_rng)*self.tempD5]),axis=0).T
             if i>0:
                 data_swp = np.vstack((data_swp,data))
             else:
@@ -110,6 +120,10 @@ def main():
     for i in range(4):
         dac.set_conversiontime(i,params['DAC_CONV_TIME'])
 
+    # LS 330
+    ls350 = cxn.lakeshore_350()
+    ls350.select_device()
+
     # Data vault
     dv = cxn.data_vault()
     
@@ -119,7 +133,7 @@ def main():
     # Create new data file
     dv.new(params['FILENAME'], ['Freq [Hz]'], ['Y [dbV]'])
         
-    rt = Transport(params, dac)
+    rt = Transport(params, dac, ls350)
     
     # DataVault File
     rt.setup_datavault(params, dv)
