@@ -1,0 +1,49 @@
+ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
+DATADIR: '2023_07_28_AKN_DMLG_08'
+FILENAME: "gate_sweep"
+
+DEPENDENTS:
+- DELAY_IDX
+- DELAY [MM]
+- SWEEP
+- V_GATE [V]
+INDEPENDENTS:
+- THz X [A]
+- THz Y [A]
+- Transport X [A]
+- Transport Y [A]
+- Temp D4 [K]
+- Temp D5 [K]
+
+LIA_THZ:
+  TIME_CONST: 0.3
+  SENS: 100.0e-3
+
+LIA_TRANSPORT:
+  TIME_CONST: 0.3
+  SENS: 1.0e-3
+  FREQ: 113.777
+  AMP: 1.0
+
+DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
+DAC_CONV_TIME: 500
+SAMPLING: 0.1
+AVGS: 100
+
+SWEEPS: 3
+GAIN: 100000000.0
+
+V_GATE_CH: 1
+DAC_IN_CH:
+- 0
+- 1
+- 6
+- 7
+
+V_GATE_I: -2.0
+V_GATE_F: 2.0
+V_GATE_STEPS: 100
+
+DELAY_I: 26.20
+DELAY_F: 26.50
+DELAY_STEPS: 10
