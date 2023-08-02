@@ -125,13 +125,13 @@ def main():
     params = dict()
 
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2023_07_19_AKN_DMLG_08"                  
+    params['DATADIR'] = "2023_07_28_AKN_DMLG_08"                  
     params['FILENAME'] = "MirrorScanSMU"
         
-    params['EY_CENTER'] = -0.1850         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.0200          #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.5430          #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 0.9845          #DAC2 (old: 1.3215)
+    params['EY_CENTER'] = -0.4255         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.1985         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.6475         #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 1.1125         #DAC2 (old: 1.3215)
     params['RANGE'] = 0.02               # usual: 0.2
     params['STEP'] = 0.001               # usual: 0.01
 
