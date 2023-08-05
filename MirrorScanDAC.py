@@ -34,7 +34,7 @@ class Scan(Thread):
         self.spot = spot
         self.dac_d = dac_d
         self.dac_m = dac_m
-        self.dac_d_dummy_ch = params['DAC_D_DUMMY_CH']
+        self.dac_d_dummy_ch = params['DAC_OUTPUT_CH_DUMMY']
         if self.spot=='E':
             self.dac_m_ch = params['DAC_M_CH'][0:2]
         else:
@@ -108,7 +108,7 @@ class Scan(Thread):
         
     def run(self):
         # Sweeps
-        N = self.params['SWEEPS']
+        N = self.params['MSWEEPS']
         swp = np.arange(N)
 
         # Scan range
@@ -138,24 +138,29 @@ class Scan(Thread):
                 # scan in Y    
                 for j in range(len(y_rng)):
                     self.dac_m.set_voltage(self.dac_m_ch[1], y_rng[j])
+                    
+                    time.sleep(self.params['LIA']['TIME_CONST'])
+
                     xv[k][i][j] = x_rng[i]
                     yv[k][i][j] = y_rng[j]
                     currentRead[k][i][j] = np.mean(self.dac_d.buffer_ramp(
-                        [self.dac_d_dummy_ch],
+                        self.dac_d_dummy_ch,
                         [self.dac_d_ch],
                         [0.0],
                         [0.0],
-                        self.params['AVGS'],
-                        1e-3*1e6,
-                        self.params['READINGS']))
+                        1,
+                        0.1*self.params['LIA']['TIME_CONST']*1e6,
+                        self.params['AVGS']))
+                    # currentRead[k][i][j] = self.dac_d.read_voltage(self.dac_d_ch)
         
         # Save to datavault
         self.save_to_datavault(swp, xv, yv, currentRead)
         # Save to *.mat format
         self.save_to_mat(swp, xv, yv, currentRead)
 
+        currentRead = np.abs(currentRead)
         currentRead = gaussian_filter(currentRead[-1], sigma=1)
-        self.max_I = np.max(np.abs(currentRead))
+        self.max_I = np.max(currentRead)
         [max_x_idx, max_y_idx] = np.unravel_index(np.argmax(currentRead),(len(x_rng),len(y_rng)))
         self.max_x = x_rng[max_x_idx]
         self.max_y = y_rng[max_y_idx]
@@ -179,7 +184,22 @@ def scan_mirror(params,spot):
     dac_d = cxn_d.dac_adc
     dac_d.select_device(params['DAC_DATA'])
     dac_d.initialize()
-   
+    
+    # Delay stage 
+    ds = cxn_d.esp300()
+    ds.select_device()
+    ds.move_absolute(1,params['STAGE_POS'])
+    time.sleep(5)
+
+    # SR 830
+    if params['SPOT'] == 'A':
+        sr = cxn_d.sr860()
+    else:
+        sr = cxn_d.sr830()
+    sr.select_device()
+    sr.time_constant(params['LIA']['TIME_CONST'])
+    sr.sensitivity(params['LIA']['SENS'])
+
     # Data vault
     dv = cxn_m.data_vault()
     
