@@ -14,12 +14,11 @@ from datetime import datetime
 import os
 import logging
 import TemperatureServer
-import SMUServer
-import MirrorScan
+import MirrorScanDAC
 
 class Transient:
     
-    def __init__(self, params, dv, ds, dac, ls350, tempServer):
+    def __init__(self, params, dv, ds, dac, dac_m, ls350, tempServer):
         self.idx = 0
         self.rootdir = params['ROOTDIR']
         self.datadir = params['DATADIR']
@@ -27,20 +26,12 @@ class Transient:
         self.dv = dv
         self.ds = ds
         self.dac = dac
+        self.dac_m = dac_m
         self.ls = ls350
         self.tempServer = tempServer
         self.I_e = 0
         self.I_a = 0
         self.v_gate = 0
-        
-        
-    def set_scan_params(self,params):
-        self.e_max_x = params['EX_CENTER']
-        self.e_max_y = params['EY_CENTER']
-        self.a_max_x = params['AX_CENTER']
-        self.a_max_y = params['AY_CENTER']
-        self.range = params['RANGE']
-        self.step = params['STEP']
         
     def current_time(self):
 
@@ -88,7 +79,7 @@ class Transient:
                                             [0.0],
                                             [0.0],
                                             params['FPOINTS'],
-                                            params['SAMPLING']*params['TIME_CONST']*1e6,
+                                            params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
                                             params["READINGS"]),dtype=np.float64)   
         
         br_end = time.time()
@@ -168,6 +159,21 @@ class Transient:
             sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
                         {'data':data})
                 
+    def scan_mirror(self,params,spot):
+        
+        # Instatiate mirror scan object
+        scan = MirrorScanDAC.Scan(params, spot, self.dac, self.dac_m, False)
+        print('setup complete')        
+        # Coarse Scan Range
+        scan.set_scan_range(params[spot]['X_CENTER'],params[spot]['Y_CENTER'], 
+                        params[spot]['RANGE'],params[spot]['STEP'])
+
+        # Scan the Mirror
+        scan.start()
+    
+        # Wait to finish scan
+        scan.join()
+
     def scan_transient(self,params):
         
         for i in range(params['DELAY_POINTS']):
@@ -180,7 +186,7 @@ class Transient:
                 try:
                     self.ds.gpib_write("1PA{:.6f}".format(self.delay_mm[i]))
                     self.ds.gpib_write("1WS")
-                    time.sleep(params['TIME_CONST']*5)
+                    time.sleep(params['LIA']['TIME_CONST']*5)
                     # delay_pos = float(self.ds.gpib_query("1TP?"))
                 except:
                     self.log_message("Stage movement error.")
@@ -191,13 +197,13 @@ class Transient:
                                                    [0.0],
                                                    [0.0],
                                                    1,
-                                                   params['SAMPLING']*params['TIME_CONST']*1e6,
+                                                   params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
                                                    params['AVGS']))
 
-                in1 = br_data[0][0]*params['SENS']/10.0/params['GAIN']
-                in2 = br_data[1][0]*params['SENS']/10.0/params['GAIN']
-                in3 = br_data[2][0]*params['SENS']/10.0/params['GAIN']
-                in4 = br_data[3][0]*params['SENS']/10.0/params['GAIN']
+                in1 = br_data[0][0]*params['LIA']['SENS']/10.0/params['GAIN']
+                in2 = br_data[1][0]*params['LIA']['SENS']/10.0/params['GAIN']
+                in3 = br_data[2][0]*params['LIA']['SENS']/10.0/params['GAIN']
+                in4 = br_data[3][0]*params['LIA']['SENS']/10.0/params['GAIN']
                 
                 self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
                                        in1, in2, in3, in4, delay_pos=0)
@@ -219,14 +225,14 @@ class Transient:
                                             [0.0],
                                             [0.0],
                                             params['FPOINTS'],
-                                            params['SAMPLING']*params['TIME_CONST']*1e6,
+                                            params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
                                             params["READINGS"]),dtype=np.float64)   
         
         br_end = time.time()
         self.log_message("Finished reading buffer in {:.6f}s.".format(br_end-br_start))
         
         # Save data tp Data Vault
-        br_data[0:2] = br_data[0:2]*params['SENS']/10.0/params['GAIN']
+        br_data[0:2] = br_data[0:2]*params['LIA']['SENS']/10.0/params['GAIN']
         
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
                                   br_data,
@@ -252,15 +258,17 @@ class Transient:
                 # Sweep
                 self.log_message("Starting sweep #{:03d}...".format(i))
                 
+                # Check current on E and A
+                self.log_message("Checking for max current on E switch...")
+                self.ds.move_absolute(1,params['STAGE_POS'])
+                self.scan_mirror(params,'E')
+                self.scan_mirror(params,'A')
+
                 # Initialize the delay stage
                 self.init_delay_stage(params)
                 
                 # Initialize the stage to starting position
                 self.init_stage_position(params)
-                
-                # Check current on E and A
-                #self.log_message("Checking for max current on E switch...")
-                #self.scan_mirror(params,k=15)
                 
                 # Setup DataVault file and Config file
                 self.log_message("Setting up datavault and config file...")
@@ -275,7 +283,7 @@ class Transient:
                                                    [0.0],
                                                    [0.0],
                                                    6,
-                                                   params['SAMPLING']*params['TIME_CONST']*1e6,
+                                                   params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
                                                    params['AVGS']))
                 # Clear DAC buffer
                 self.dac.stop_ramp()
@@ -346,8 +354,8 @@ def main():
     lck = cxn.sr860()
     lck.select_device()
     
-    lck.time_constant(params['TIME_CONST'])
-    lck.sensitivity(params['SENS'])
+    lck.time_constant(params['LIA']['TIME_CONST'])
+    lck.sensitivity(params['LIA']['SENS'])
       
     # DataVault
     dv = cxn.data_vault
@@ -357,7 +365,8 @@ def main():
     scanTransient = Transient(params,
                               dv, 
                               ds, 
-                              dac, 
+                              dac,
+                              dac_m, 
                               ls350, 
                               tempServer)
     
@@ -370,9 +379,6 @@ def main():
     # Initialize the delay stage
     scanTransient.init_delay_stage(params)
     
-    # Set mirror scan parameters
-    scanTransient.set_scan_params(params)
-    
     # Setup log file
     scanTransient.setup_logfile(params)
     
@@ -382,14 +388,8 @@ def main():
     
     # Voltage ramp up on E SMU
     scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],0,params['BIAS_E'])
+
     try:
-        # Rough Scans
-        #scanTransient.log_message('Coarse mirror Scan E and A...')
-        #scanTransient.scan_mirror(params)
-        # Fine Scans
-        #scanTransient.log_message('Fine mirror Scan E and A...')
-        #scanTransient.scan_mirror(params,k=10)
-        
         # Sweeps
         scanTransient.scan_transient_sweep(params)
 
@@ -399,8 +399,8 @@ def main():
         # Kill Temperature serverp
         tempServer.stop_thread = True
             
-    except:
-        scanTransient.log_message("Safe exit in process.")
+    except Exception as error:
+        scanTransient.log_message("Safe exit in process. {}".format(error))
     
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
