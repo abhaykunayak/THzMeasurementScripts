@@ -48,7 +48,7 @@ class GateSweep(Thread):
         config_filename = self.datapath+"\\"+self.dv.get_name()+".yml"
         with open(config_filename, 'w') as f:
             yaml.dump(params, f, sort_keys=False, default_flow_style=False)
-            self.log_message("Config file written.")
+            print("Config file written.")
 
     def voltage_ramp(self,ch,v_initial,v_final):
         print("Starting DAC voltage ramp on CH {}...".format(ch))
@@ -67,7 +67,7 @@ class GateSweep(Thread):
         # move stage to position
         print("Moving stage to position: {} mm".format(self.delay_pos))
         self.ds.move_absolute(1,self.delay_pos)
-        time.sleep(2)
+        time.sleep(3)
 
     def sweep_gate(self,params):
         # delay range
