@@ -258,11 +258,23 @@ class Transient:
                 # Sweep
                 self.log_message("Starting sweep #{:03d}...".format(i))
                 
-                # Check current on E and A
-                self.log_message("Checking for max current on E switch...")
-                self.ds.move_absolute(1,params['STAGE_POS'])
-                self.scan_mirror(params,'E')
-                self.scan_mirror(params,'A')
+                if params['MIRROR_SCAN']:
+                    # Check current on E and A
+                    self.log_message("Checking for max current on E switch...")
+                    self.log_message("Moving stage to {} mm.".format(params['STAGE_POS']))
+                    self.ds.move_absolute(1,params['STAGE_POS'])
+                    time.sleep(2)
+                    for j in range(20):
+                        curr_pos = self.dac.read_voltage(3)
+                        if curr_pos>3.0:
+                            self.log_message("Stage in position.")
+                            break
+                        else:
+                            self.log_message("Waiting for stage position...")
+                        time.sleep(2)
+
+                    self.scan_mirror(params,'E')
+                    self.scan_mirror(params,'A')
 
                 # Initialize the delay stage
                 self.init_delay_stage(params)
