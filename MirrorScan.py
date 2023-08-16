@@ -128,12 +128,12 @@ def main():
     params['DATADIR'] = "2023_07_28_AKN_DMLG_08"                  
     params['FILENAME'] = "MirrorScanSMU"
         
-    params['EY_CENTER'] = -0.4140         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.3355         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.7145         #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 1.1005         #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.01               # usual: 0.2
-    params['STEP'] = 0.0005               # usual: 0.01
+    params['EY_CENTER'] = -0.4100         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.3370         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.7150         #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 1.1015         #DAC2 (old: 1.3215)
+    params['RANGE'] = 0.02               # usual: 0.2
+    params['STEP'] = 0.001               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
     params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
