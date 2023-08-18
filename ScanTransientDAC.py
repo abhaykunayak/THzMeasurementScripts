@@ -140,11 +140,25 @@ class Transient:
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS1000")
+
+        # Check if stage in position
+        stage_in_pos = False
+        for i in range(20):
+            time.sleep(2)
+            stage_motion = self.dac.read_voltage(3)
+            if stage_motion>3.0:
+                self.log_message("Stage in position.")
+                stage_in_pos = True
+                break
+            else:
+                self.log_message("Waiting for stage position...")
+                if i == 19:
+                    self.log_message("Moving stage timeout.")
+
+        if not stage_in_pos:
+            self.log_message("Stage not in position.")      
         
-        self.wait_sec(15)
-        
-        self.log_message("Moving stage timeout.")        
-        
+
     def save_to_datavault(self,dmm,dps,in1,in2,in3,in4,delay_pos):
         # Read temperature                
         self.tempD4  = self.tempServer.tempD4
