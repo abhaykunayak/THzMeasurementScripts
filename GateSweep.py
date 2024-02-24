@@ -73,6 +73,7 @@ class GateSweep(Thread):
         # delay range
         delay_rng = np.linspace(params['DELAY_I'],params['DELAY_F'],
                             params['DELAY_STEPS'])
+        d_rng2 = params['DELAY_STEP_LIST']
         
         # gate range
         v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
@@ -87,6 +88,7 @@ class GateSweep(Thread):
         for j in range(params['DELAY_STEPS']):
             
             self.move_stage(delay_rng[j])
+            #self.move_stage(d_rng2[j])
 
             for i in swp:
                 print("Starting sweep: {} out of {}...".format(i+1,params['SWEEPS']))
@@ -142,11 +144,13 @@ def main():
     sr860 = cxn.sr860()
     sr860.select_device()
     sr860.sensitivity(params['LIA_THZ']['SENS'])
+    sr860.time_constant(params['LIA_THZ']['TIME_CONST'])
 
     # SR 830
     sr830 = cxn.sr830()
     sr830.select_device()
     sr830.sensitivity(params['LIA_TRANSPORT']['SENS'])
+    sr830.time_constant(params['LIA_TRANSPORT']['TIME_CONST'])
 
     # DAC-ADC for data
     dac = cxn.dac_adc

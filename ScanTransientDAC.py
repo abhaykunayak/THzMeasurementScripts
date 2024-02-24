@@ -101,8 +101,8 @@ class Transient:
         self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
         self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
                                         ('delay_ps', 'Lockin Y'), 
-                                        ('delay_ps', 'Input 2'), 
-                                        ('delay_ps', 'Input 3')))
+                                        ('delay_ps', 'Input 3'), 
+                                        ('delay_ps', 'Input 4')))
     
     def setup_delay(self,delay_start,delay_end,pts):
         # Calculate delay
@@ -140,10 +140,11 @@ class Transient:
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS1000")
+        time.sleep(30)
 
         # Check if stage in position
         stage_in_pos = False
-        for i in range(20):
+        for i in range(10):
             time.sleep(2)
             stage_motion = self.dac.read_voltage(3)
             if stage_motion>3.0:
@@ -152,7 +153,7 @@ class Transient:
                 break
             else:
                 self.log_message("Waiting for stage position...")
-                if i == 19:
+                if i == 9:
                     self.log_message("Moving stage timeout.")
 
         if not stage_in_pos:
@@ -376,13 +377,16 @@ def main():
     ds = cxn.esp300()
     ds.select_device()
     
-    # Lockin
-    lck = cxn.sr860()
-    lck.select_device()
+    # Lockin - THz
+    lck1 = cxn.sr860()
+    lck1.select_device()
     
-    lck.time_constant(params['LIA']['TIME_CONST'])
-    lck.sensitivity(params['LIA']['SENS'])
-      
+    lck1.time_constant(params['LIA']['TIME_CONST'])
+    lck1.sensitivity(params['LIA']['SENS'])
+    
+    # Lockin - Transport
+    lck2 = cxn.sr830()
+
     # DataVault
     dv = cxn.data_vault
     dv.cd(params['DATADIR']) # Change to data directory

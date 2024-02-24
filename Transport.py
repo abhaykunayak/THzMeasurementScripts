@@ -44,12 +44,12 @@ class Transport(Thread):
         print("Starting DAC voltage ramp on CH {}...".format(ch))
         if v_initial == v_final:
             return
-        step = 20
+        step = 50
         v_steps = np.linspace(v_initial, v_final, step)
         for i in range(step):
             self.dac.set_voltage(ch,v_steps[i])
             time.sleep(0.2)
-        time.sleep(1)
+        time.sleep(5)
         print("DAC CH {} Voltage ramp ended.".format(ch))
     
     def scan_gate(self,params):
@@ -129,9 +129,6 @@ def main():
     
     # Change to data directory
     dv.cd(params['DATADIR'])
-    
-    # Create new data file
-    dv.new(params['FILENAME'], ['Freq [Hz]'], ['Y [dbV]'])
         
     rt = Transport(params, dac, ls350)
     

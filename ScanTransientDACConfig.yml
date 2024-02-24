@@ -1,6 +1,6 @@
 MEASURE_MODE: FAST
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: 2023_07_28_AKN_DMLG_08
+DATADIR: 2024_02_21_AKNDB27_1A
 FILENAME: transient
 
 DEPENDENTS:
@@ -11,25 +11,26 @@ INDEPENDENTS:
 - Lockin Y [A]
 - Input 2 [V]
 - Input 3 [V]
-- Input 5 [V]
+- Input 4 [V]
 - Input 6 [V]
+- Input 7 [V]
 - Temp A [K]
 - Temp B [K]
 
 DELAY_RANGE_MM:
-- 20.0                # Full: 20; Sample: 24
-- 30.0                # Full: 30; Sample: 30
+- 24.5                # Full: 24; Sample: 24
+- 34.5                # Full: 34; Sample: 30
 DELAY_TRAVEL: 10
 DELAY_POINTS: 1001
-DAC_TIME: 210       # 210s for 5000 pt
+DAC_TIME: 55       # 230 s for 5000 pt
 
 LIA:
   TIME_CONST: 0.1
-  SENS: 0.2
+  SENS: 0.005
 
-V_GATE_I: 0.0
-V_GATE_F: -0.0
-V_GATE_STEPS: 3
+V_GATE_I: -1.0
+V_GATE_F: 1.0
+V_GATE_STEPS: 10
 V_GATE_CH: 1
 
 T_INITIAL: 95.0
@@ -38,35 +39,35 @@ T_STEPS: 5
 
 SWEEPS: 10
 AVGS: 5
-FPOINTS: 5000
+FPOINTS: 3000
 SAMPLING: 0.1
-READINGS: 5
+READINGS: 1
 
 GAIN: 100000000.0
-BIAS_E: 10
+BIAS_E: 10.0
 BIAS_AB: 0.0
 
 MAX_I_E: 0
 MAX_I_AB: 0
 
-MIRROR_SCAN: 1
+MIRROR_SCAN: 0
 MSWEEPS: 1
 MAVGS: 1
-STAGE_POS: 25.0 # 21.7; 22.55; 25.0
+STAGE_POS: 21.774 # 21.7; 22.55; 25.0
 E:
-  X_CENTER: 5.3360
-  Y_CENTER: -0.4080
+  X_CENTER: 5.2140
+  Y_CENTER: -0.6300
   DAC_D_OUT_CH: 0
   DAC_D_IN_CH: 6
-  RANGE: 0.02
-  STEP: 0.001
+  RANGE: 0.005
+  STEP: 0.0002
 A:
-  X_CENTER: 1.1005
-  Y_CENTER: 0.7150
+  X_CENTER: 1.2375
+  Y_CENTER: 0.6180
   DAC_D_OUT_CH: 0
   DAC_D_IN_CH: 1
-  RANGE: 0.02
-  STEP: 0.001
+  RANGE: 0.005
+  STEP: 0.0002
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
 DAC_CONV_TIME: 500
@@ -78,6 +79,7 @@ DAC_INPUT_CH:
 - 1
 - 2
 - 3
+- 4
 - 6
 - 7
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)

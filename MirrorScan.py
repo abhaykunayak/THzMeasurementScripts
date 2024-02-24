@@ -101,7 +101,6 @@ class Scan(Thread):
             # scan in Y    
             for j in range(len(y_rng)):
                 self.dac.set_voltage(self.dac_ch_y, y_rng[j])
-                # time.sleep(0.01)
                 currentRead[i][j] = self.smu.read_i()
                 self.save_to_datavault(x_rng[i], y_rng[j], currentRead[i][j])
                 
@@ -125,14 +124,14 @@ def main():
     params = dict()
 
     params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2023_07_28_AKN_DMLG_08"                  
-    params['FILENAME'] = "MirrorScanSMU"
+    params['DATADIR'] = "2024_02_21_AKNDB27_1A"                  
+    params['FILENAME'] = "MScanSMU"
         
-    params['EY_CENTER'] = -0.4100         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.3370         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.7150         #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 1.1015         #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.02               # usual: 0.2
+    params['EY_CENTER'] = -0.5990         #DAC1 refl: -0.4510; trans: -0.35
+    params['EX_CENTER'] = 5.2160         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
+    params['AY_CENTER'] = 0.7800         #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 0.7840         #DAC2 (old: 1.3215)
+    params['RANGE'] = 0.01               # usual: 0.2
     params['STEP'] = 0.001               # usual: 0.01
 
     params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
@@ -163,6 +162,7 @@ def main():
     dac_a = cxn_a.dac_adc
     dac_a.select_device(params['DAC_MIRROR'])
 
+    # SMU
     smu2400 = cxn_e.k2400()
     smu2400.select_device()
     smu2400.gpib_write(":ROUTe:TERMinals FRONt") # FRONt or REAR
@@ -181,6 +181,10 @@ def main():
     smu2450.gpib_write(':SENSe:AVERage:COUNt {}'.format(params['FILT_COUNT']))
     smu2450.gpib_write(':SENSe:AVERage {}'.format(params['FILT']))
     
+    # Delay stage
+    ds = cxn_e.esp300()
+    ds.select_device()
+
     # Data vault
     dv_e = cxn_e.data_vault()
     dv_a = cxn_e.data_vault()
@@ -188,64 +192,41 @@ def main():
     # Change to data directory
     dv_e.cd(params['DATADIR'])
     dv_a.cd(params['DATADIR'])
-    
-    # Create new data file
-    dv_e.new('E_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-    dv_a.new('A_'+params['FILENAME'], ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-    
-    # Instatiate mirror scan object
-    scan_e = Scan(params,'E',smu2400,dac_e,0,1,True)
-    scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
-    
-    # DataVault File
-    scan_e.set_datafile(dv_e)
-    scan_a.set_datafile(dv_a)
-    
-    # Coarse
-    scan_e.set_scan_range(params['EX_CENTER'],params['EY_CENTER'], params['RANGE'],params['STEP'])
-    scan_a.set_scan_range(params['AX_CENTER'],params['AY_CENTER'], params['RANGE'],params['STEP'])
-    
-    # Measurement
-    start = time.time()
-    print("[{}] Estimated total time: {:.0f} s"
-          .format(scan_e.current_time(),
-                  4.5*params['DELAY']*(params['RANGE']*params['RANGE'])/(params['STEP']*params['STEP'])))
-    
-    # Voltage ramp
-    scan_e.voltage_ramp(0, params['BIAS'])
-    scan_a.voltage_ramp(0, params['BIAS'])
 
-    # Scan the Mirror
-    scan_e.start()
-    scan_a.start()
-    
-    # Wait to finish scan
-    scan_e.join()
-    scan_a.join()
-    
-    e_max_x = scan_e.max_x
-    e_max_y = scan_e.max_y
-    
-    a_max_x = scan_a.max_x
-    a_max_y = scan_a.max_y
-    
-    if params["AUTOZOOM"]:
-        print("[{}] Auto-zoom...".format(scan_e.current_time()) )
-        # Create new data file
-        dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-        dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    stg_pos = np.linspace(21,31,1)
+    for i in stg_pos:
         
         # Instatiate mirror scan object
-        scan_e = Scan('E',smu2400,dac_e,0,1,True)
-        scan_a = Scan('A',smu2450,dac_a,2,3,True)
+        scan_e = Scan(params,'E',smu2400,dac_e,0,1,True)
+        scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
         
+        # Move stage to position
+        ds.move_absolute(1,i)
+        print("[{}] Moving stage to {} mm".format(scan_e.current_time(),i) )
+        time.sleep(5)
+
+        # Create new data file
+        dv_e.new('E_'+params['FILENAME']+'_{} mm'.format(i), ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        dv_a.new('A_'+params['FILENAME']+'_{} mm'.format(i), ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        
+        # DataVault File
         scan_e.set_datafile(dv_e)
         scan_a.set_datafile(dv_a)
         
-        # Fine
-        scan_e.set_scan_range(e_max_x,e_max_y,params['RANGE']/20,params['STEP']/20)
-        scan_a.set_scan_range(a_max_x,a_max_y, params['RANGE']/20,params['STEP']/20)
+        # Coarse
+        scan_e.set_scan_range(params['EX_CENTER'],params['EY_CENTER'], params['RANGE'],params['STEP'])
+        scan_a.set_scan_range(params['AX_CENTER'],params['AY_CENTER'], params['RANGE'],params['STEP'])
         
+        # Measurement
+        start = time.time()
+        print("[{}] Estimated total time: {:.0f} s"
+            .format(scan_e.current_time(),
+                    4.5*params['DELAY']*(params['RANGE']*params['RANGE'])/(params['STEP']*params['STEP'])))
+        
+        # Voltage ramp
+        scan_e.voltage_ramp(0, params['BIAS'])
+        scan_a.voltage_ramp(0, params['BIAS'])
+
         # Scan the Mirror
         scan_e.start()
         scan_a.start()
@@ -253,6 +234,37 @@ def main():
         # Wait to finish scan
         scan_e.join()
         scan_a.join()
+        
+        e_max_x = scan_e.max_x
+        e_max_y = scan_e.max_y
+        
+        a_max_x = scan_a.max_x
+        a_max_y = scan_a.max_y
+    
+    # if params["AUTOZOOM"]:
+    #     print("[{}] Auto-zoom...".format(scan_e.current_time()) )
+    #     # Create new data file
+    #     dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    #     dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        
+    #     # Instatiate mirror scan object
+    #     scan_e = Scan('E',smu2400,dac_e,0,1,True)
+    #     scan_a = Scan('A',smu2450,dac_a,2,3,True)
+        
+    #     scan_e.set_datafile(dv_e)
+    #     scan_a.set_datafile(dv_a)
+        
+    #     # Fine
+    #     scan_e.set_scan_range(e_max_x,e_max_y,params['RANGE']/20,params['STEP']/20)
+    #     scan_a.set_scan_range(a_max_x,a_max_y, params['RANGE']/20,params['STEP']/20)
+        
+    #     # Scan the Mirror
+    #     scan_e.start()
+    #     scan_a.start()
+        
+    #     # Wait to finish scan
+    #     scan_e.join()
+    #     scan_a.join()
         
     # Voltage ramp doen
     scan_e.voltage_ramp(params['BIAS'], 0)
