@@ -248,6 +248,7 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA']['SENS']/10.0/params['GAIN']
+        br_data[5:7] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
                                   br_data,
