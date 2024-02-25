@@ -380,15 +380,15 @@ def main():
     # Lockin - THz
     lck1 = cxn.sr860()
     lck1.select_device()
-    lck1.time_constant(params['LIA_THZ']['TIME_CONST'])
-    lck1.sensitivity(params['LIA_THZ']['SENS'])
+    lck1.time_constant(params['LIA']['TIME_CONST'])
+    lck1.sensitivity(params['LIA']['SENS'])
     
     # Lockin - Transport
     lck2 = cxn.sr830()
     lck2.select_device()    
-    lck2.time_constant(params['LIA']['TIME_CONST'])
-    lck2.sensitivity(params['LIA']['SENS'])
-    lck2.sine_out_amplitude(params['LIA']['AMPL'])
+    lck2.time_constant(params['LIA_2']['TIME_CONST'])
+    lck2.sensitivity(params['LIA_2']['SENS'])
+    lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
 
     # DataVault
     dv = cxn.data_vault
