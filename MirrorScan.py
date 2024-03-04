@@ -129,8 +129,8 @@ def main():
         
     params['EY_CENTER'] = -0.5990         #DAC1 refl: -0.4510; trans: -0.35
     params['EX_CENTER'] = 5.2160         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.7800         #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 0.7840         #DAC2 (old: 1.3215)
+    params['AY_CENTER'] = 0.8010         #DAC3 (old: 0.5210)
+    params['AX_CENTER'] = 0.7740         #DAC2 (old: 1.3215)
     params['RANGE'] = 0.01               # usual: 0.2
     params['STEP'] = 0.001               # usual: 0.01
 

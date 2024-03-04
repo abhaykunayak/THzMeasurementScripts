@@ -49,7 +49,7 @@ class Transport(Thread):
         for i in range(step):
             self.dac.set_voltage(ch,v_steps[i])
             time.sleep(0.2)
-        time.sleep(5)
+        time.sleep(1)
         print("DAC CH {} Voltage ramp ended.".format(ch))
     
     def scan_gate(self,params):
@@ -64,11 +64,19 @@ class Transport(Thread):
             print("Starting sweep: {} out of {}...".format(i+1,params['SWEEPS']))
             
             # Measure temperature
-            self.tempD4 = float(self.ls.read_temp('D4'))
-            self.tempD5 = float(self.ls.read_temp('D5'))
+            try:
+                self.tempD4 = float(self.ls.read_temp('D4'))
+                self.tempD5 = float(self.ls.read_temp('D5'))
+            except:
+                print("Error in reading temperature")
             
             # Gate voltage ramp
-            self.voltage_ramp_dac(params['V_GATE_CH'],0,v_rng[0])
+            if i==0:
+                self.voltage_ramp_dac(params['V_GATE_CH'],0,params['VIMD'])
+                self.voltage_ramp_dac(params['V_GATE_CH'],params['VIMD'],v_rng[0])
+            else:
+                self.voltage_ramp_dac(params['V_GATE_CH'],v_rng[-1],params['VIMD'])
+                self.voltage_ramp_dac(params['V_GATE_CH'],params['VIMD'],v_rng[0])
 
             # Buffer Ramp
             br_data = np.array(self.dac.buffer_ramp([params['V_GATE_CH']],
@@ -78,14 +86,13 @@ class Transport(Thread):
                                             params['V_GATE_STEPS']+1,
                                             params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
                                             params['AVGS']))
-            
 
-            # Gate voltage ramp
-            self.voltage_ramp_dac(params['V_GATE_CH'],v_rng[-1],0)
-        
+            # Lock-in data
+            br_data[1:3] = br_data[1:3]*params['LIA']['SENS']/10.0/params['IAC']
+
             # Format data
             data = np.concatenate(([np.ones_like(v_rng)*i],[v_rng],
-                                br_data*params['LIA']['SENS']/10.0,
+                                br_data,
                                 [np.ones_like(v_rng)*self.tempD4],
                                 [np.ones_like(v_rng)*self.tempD5]),axis=0).T
             if i>0:
@@ -93,10 +100,19 @@ class Transport(Thread):
             else:
                 data_swp = data
 
+        # Gate voltage ramp
+        self.voltage_ramp_dac(params['V_GATE_CH'],v_rng[-1],0)
+        
         end_time = time.time()
         print("Finished all sweeps in {:.2f}s.".format(end_time-start_time))
 
         return data_swp
+
+    def IV(self,params):
+        '''
+        Description of the function
+        '''
+        print('MCBC')
 
 def main():
     # Load config file
@@ -108,10 +124,13 @@ def main():
     # Initialize labrad and servers
     cxn = labrad.connect()
     
-    # SR 830 Spectrum Analyzer
+    # SR 830 Lockin 
     sr830 = cxn.sr830()
     sr830.select_device()
     sr830.sensitivity(params['LIA']['SENS'])
+    sr830.time_constant(params['LIA']['TIME_CONST'])
+    sr830.sine_out_amplitude(params['LIA']['AMPL'])
+    sr830.frequency(params['LIA']['FREQ'])
 
     # DAC-ADC for data
     dac = cxn.dac_adc

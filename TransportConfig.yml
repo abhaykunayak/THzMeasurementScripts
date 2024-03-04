@@ -1,21 +1,24 @@
 ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
-DATADIR: '2023_11_21_AKN_MLG_07'
+DATADIR: '2024_02_21_AKNDB27_1A'
 FILENAME: "transport"
 
 DEPENDENTS:
 - SWEEP
 - V_GATE
 INDEPENDENTS:
+- V1 [V]
 - Lockin X [A]
 - Lockin Y [A]
 - Temp D4 [K]
 - Temp D5 [K]
 
 LIA:
-  TIME_CONST: 0.3
-  SENS: 100.0e-6
+  TIME_CONST: 0.1
+  SENS: 20.0e-6
   FREQ: 107.777
-  AMP: 1.0
+  AMPL: 0.1
+
+IAC: 10.0e-9
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
 DAC_CONV_TIME: 500
@@ -26,10 +29,11 @@ SWEEPS: 1
 
 V_GATE_CH: 1
 DAC_IN_CH:
+- 4
+- 5
 - 6
-- 7
 
-V_GATE_I: -1.0
-V_GATE_F: 1.0
-V_GATE_STEPS: 100
-
+VIMD: 0.0
+V_GATE_I: 0.0
+V_GATE_F: -4.0
+V_GATE_STEPS: 200

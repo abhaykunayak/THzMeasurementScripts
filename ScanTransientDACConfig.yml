@@ -12,6 +12,7 @@ INDEPENDENTS:
 - Input 2 [V]
 - Input 3 [V]
 - Input 4 [V]
+- Input 5 [V]
 - Input 6 [V]
 - Input 7 [V]
 - Temp A [K]
@@ -22,27 +23,30 @@ DELAY_RANGE_MM:
 - 34.5                # Full: 34; Sample: 30
 DELAY_TRAVEL: 10
 DELAY_POINTS: 1001
-DAC_TIME: 55       # 230 s for 5000 pt
+DAC_TIME: 100       #
 
 LIA:
   TIME_CONST: 0.1
-  SENS: 0.05
+  SENS: 0.2
 
 LIA_2:
-  TIME_CONST: 0.3
-  SENS: 50.0e-6
+  TIME_CONST: 0.1
+  SENS: 20.0e-6
   AMPL: 0.1
+  FREQ: 117.7777
 
 SWEEPS: 10
 AVGS: 5
-FPOINTS: 3000
+FPOINTS: 5000
 SAMPLING: 0.1
 READINGS: 1
 
-V_GATE_I: -1.0
-V_GATE_F: 1.0
-V_GATE_STEPS: 10
+VIMD: 0.0
+V_GATE_I: 0.0
+V_GATE_F: -2.0
+V_GATE_STEPS: 4
 V_GATE_CH: 1
+VGAIN: 1000
 
 T_INITIAL: 95.0
 T_FINAL: 120.0
@@ -88,6 +92,7 @@ DAC_INPUT_CH:
 - 4
 - 5
 - 6
+- 7
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_M_CH:
 - 0         # X - E

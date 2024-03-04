@@ -328,7 +328,9 @@ class Transient:
         v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
                             params['V_GATE_STEPS']+1)
         # Gate voltage ramp
-        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],0,v_rng[0])
+        self.log_message("Ramping to intermediate gate voltage: {:.3f}...".format(params['VIMD']))
+        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],0,params['VIMD'])
+        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],params['VIMD'],v_rng[0])
 
         for i in v_rng:
             # Gate Voltage
@@ -390,6 +392,7 @@ def main():
     lck2.time_constant(params['LIA_2']['TIME_CONST'])
     lck2.sensitivity(params['LIA_2']['SENS'])
     lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
+    lck2.frequency(params['LIA_2']['FREQ'])
 
     # DataVault
     dv = cxn.data_vault
