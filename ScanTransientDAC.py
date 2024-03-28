@@ -100,9 +100,7 @@ class Transient:
         self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_MM']))
         self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
         self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
-                                        ('delay_ps', 'Lockin Y'), 
-                                        ('delay_ps', 'Input 3'), 
-                                        ('delay_ps', 'Input 4')))
+                                        ('delay_ps', 'Lockin Y')))
     
     def setup_delay(self,delay_start,delay_end,pts):
         # Calculate delay
@@ -169,10 +167,10 @@ class Transient:
                          self.I_e,self.I_a,delay_pos])
         self.dv.add(data)
     
-    def save_to_mat(self,data):
+    def save_to_mat(self,data,params):
             print('[{}] Saving to *.mat...'.format(self.current_time()))
             sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
-                        {'data':data})
+                        {'data': data, 'config': params})
                 
     def scan_mirror(self,params,spot):
         
@@ -257,7 +255,7 @@ class Transient:
                                   ),axis=0).T
         
         self.dv.add(dv_data)
-        self.save_to_mat(dv_data)
+        self.save_to_mat(dv_data,params)
             
         # Start moving stage
         self.log_message("Moving to start position...")
