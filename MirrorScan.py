@@ -6,12 +6,14 @@ Created on Fri Sep  9 20:01:38 2022
 """
 
 import time
-import labrad
+import os
+import yaml
 import numpy as np
 import scipy.io as sio
 from datetime import datetime
 from threading import Thread
 from scipy.ndimage import gaussian_filter
+import labrad
 
 class Scan(Thread):
     
@@ -120,36 +122,11 @@ class Scan(Thread):
 
 def main():
     
-    # Define parameters
-    params = dict()
+    # Load config file
+    CONFIG_FILENAME = 'MirrorScanConfig.yml'
 
-    params['ROOTDIR'] = r"C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data"
-    params['DATADIR'] = "2024_02_21_AKNDB27_1A"                  
-    params['FILENAME'] = "MScanSMU"
-        
-    params['EY_CENTER'] = -0.5990         #DAC1 refl: -0.4510; trans: -0.35
-    params['EX_CENTER'] = 5.2160         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-    params['AY_CENTER'] = 0.8010         #DAC3 (old: 0.5210)
-    params['AX_CENTER'] = 0.7740         #DAC2 (old: 1.3215)
-    params['RANGE'] = 0.01               # usual: 0.2
-    params['STEP'] = 0.001               # usual: 0.01
-
-    params['DAC_DATA'] = "DAC-ADC_AD7734-AD5791 (COM5)"         # DAC for signal
-    params['DAC_MIRROR'] = "DAC-ADC_AD7734-AD5791_4x4 (COM3)"   # DAC for mirrors
-    params['DAC_CH_Y'] = 1
-    params['DAC_CH_X'] = 0
-
-    params['BIAS'] = 10
-    params['DELAY'] = 0.05
-    params['SMU_RANGE'] = 100e-6         # current range on K2450
-
-    params['COMPL'] = 20e-6
-    params['NPLC'] = 1                  # 0.1 -- 10
-    params['FILT'] = "OFF"              # 'ON' or 'OFF'
-    params['FILT_TYPE'] = "REPeat"      # 'REPeat' or 'MOVing'
-    params['FILT_COUNT'] = 1            # 1 -- 100
-
-    params["AUTOZOOM"] = False
+    with open(os.path.realpath(CONFIG_FILENAME),'r') as f:
+        params = yaml.safe_load(f)
     
     # Initialize labrad and servers
     cxn_e = labrad.connect()
@@ -241,30 +218,30 @@ def main():
         a_max_x = scan_a.max_x
         a_max_y = scan_a.max_y
     
-    # if params["AUTOZOOM"]:
-    #     print("[{}] Auto-zoom...".format(scan_e.current_time()) )
-    #     # Create new data file
-    #     dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
-    #     dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+    if params["AUTOZOOM"]:
+        print("[{}] Auto-zoom...".format(scan_e.current_time()) )
+        # Create new data file
+        dv_e.new('E_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
+        dv_a.new('A_'+params['FILENAME']+'_fine', ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])
         
-    #     # Instatiate mirror scan object
-    #     scan_e = Scan('E',smu2400,dac_e,0,1,True)
-    #     scan_a = Scan('A',smu2450,dac_a,2,3,True)
+        # Instatiate mirror scan object
+        scan_e = Scan(params,'E',smu2400,dac_e,0,1,True)
+        scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
         
-    #     scan_e.set_datafile(dv_e)
-    #     scan_a.set_datafile(dv_a)
+        scan_e.set_datafile(dv_e)
+        scan_a.set_datafile(dv_a)
         
-    #     # Fine
-    #     scan_e.set_scan_range(e_max_x,e_max_y,params['RANGE']/20,params['STEP']/20)
-    #     scan_a.set_scan_range(a_max_x,a_max_y, params['RANGE']/20,params['STEP']/20)
+        # Fine
+        scan_e.set_scan_range(e_max_x,e_max_y,params['RANGE']/params['ZOOM_FACTOR'],params['STEP']/params['ZOOM_FACTOR'])
+        scan_a.set_scan_range(a_max_x,a_max_y, params['RANGE']/params['ZOOM_FACTOR'],params['STEP']/params['ZOOM_FACTOR'])
         
-    #     # Scan the Mirror
-    #     scan_e.start()
-    #     scan_a.start()
+        # Scan the Mirror
+        scan_e.start()
+        scan_a.start()
         
-    #     # Wait to finish scan
-    #     scan_e.join()
-    #     scan_a.join()
+        # Wait to finish scan
+        scan_e.join()
+        scan_a.join()
         
     # Voltage ramp doen
     scan_e.voltage_ramp(params['BIAS'], 0)

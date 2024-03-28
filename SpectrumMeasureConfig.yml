@@ -1,8 +1,7 @@
 ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
-DATADIR: '2023_07_05_TeraLine'
-FILENAME: "Spectrum_photodiode_afterChopper_narrow"
+DATADIR: '2024_02_21_AKNDB27_1A'
+FILENAME: "Spectrum"
 
-SPAN: 15
-CENTER_F: 3150
+SPAN: 10
+CENTER_F: 10
 NAVG: 10
-

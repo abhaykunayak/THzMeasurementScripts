@@ -1,6 +1,6 @@
 MEASURE_MODE: FAST
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: 2024_02_21_AKNDB27_1A
+DATADIR: '2024_03_28'
 FILENAME: transient
 
 DEPENDENTS:
@@ -19,15 +19,16 @@ INDEPENDENTS:
 - Temp B [K]
 
 DELAY_RANGE_MM:
-- 24.5                # Full: 24; Sample: 24
-- 34.5                # Full: 34; Sample: 30
+- 24.0                # Full: 24; Sample: 24
+- 34.0                # Full: 34; Sample: 30
 DELAY_TRAVEL: 10
 DELAY_POINTS: 1001
-DAC_TIME: 100       #
+DELAY_POS_THZ: 25.26  # peak THz signal
+DAC_TIME: 100         # 100s for 5000 pts
 
 LIA:
   TIME_CONST: 0.1
-  SENS: 0.2
+  SENS: 0.01
 
 LIA_2:
   TIME_CONST: 0.1
@@ -35,7 +36,7 @@ LIA_2:
   AMPL: 0.1
   FREQ: 117.7777
 
-SWEEPS: 10
+SWEEPS: 1
 AVGS: 5
 FPOINTS: 5000
 SAMPLING: 0.1

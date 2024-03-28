@@ -341,7 +341,7 @@ class Transient:
          
         # Gate voltage ramp
         self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],v_rng[-1],0)
-        
+             
 def main():
     
     # Load config file

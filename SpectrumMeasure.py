@@ -32,10 +32,10 @@ class SpectrumMeasure(Thread):
         data = np.column_stack((x,y))
         self.dv.add(data)
 
-    def save_to_mat(self,x,y):
+    def save_to_mat(self,x,y,config):
         data = np.column_stack((x,y))
         sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
-                    {'data':data})
+                    {'data':data, 'config': config})
                     
     def set_span(self,s):
         self.sr770.gpib_write('SPAN{:d}'.format(s))
@@ -97,18 +97,16 @@ def main():
     spec.set_datafile(dv)
 
     # Averaging
-    #spec.sr770.gpib_write('*RST')
-    #spec.set_meas(1)
-    spec.set_span(10)
-    spec.set_averaging(1,10)
-    spec.set_center_freq(3150)
+    spec.set_span(params['SPAN'])
+    spec.set_averaging(1,params['NAVG'])
+    spec.set_center_freq(params['CENTER_F'])
 
     # Measure 
     x,y = spec.get_data()
 
     # Save data
     spec.save_to_datavault(x,y)
-    spec.save_to_mat(x,y)
+    spec.save_to_mat(x,y,params)
 
 if __name__ == '__main__':
     main()
