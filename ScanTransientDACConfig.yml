@@ -1,6 +1,6 @@
 MEASURE_MODE: FAST
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: '2024_03_28'
+DATADIR: '2024_03_30_AKN_BLG_20'
 FILENAME: transient
 
 DEPENDENTS:
@@ -14,7 +14,7 @@ INDEPENDENTS:
 - Input 4 [V]
 - Input 5 [V]
 - Input 6 [V]
-- Input 7 [V]
+- Stage Flag [V]
 - Temp A [K]
 - Temp B [K]
 
@@ -28,15 +28,15 @@ DAC_TIME: 100         # 100s for 5000 pts
 
 LIA:
   TIME_CONST: 0.1
-  SENS: 0.01
+  SENS: 5.0e-3
 
 LIA_2:
   TIME_CONST: 0.1
-  SENS: 20.0e-6
-  AMPL: 0.1
+  SENS: 100.0e-6
+  AMPL: 0.0
   FREQ: 117.7777
 
-SWEEPS: 1
+SWEEPS: 10
 AVGS: 5
 FPOINTS: 5000
 SAMPLING: 0.1
@@ -93,7 +93,7 @@ DAC_INPUT_CH:
 - 4         #
 - 5         #
 - 6         # Optical Encoder
-- 7         # Motion flag
+- 7         # Stage flag
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_M_CH:
 - 0         # X - E

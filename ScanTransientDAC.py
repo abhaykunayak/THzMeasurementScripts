@@ -34,22 +34,32 @@ class Transient:
         self.v_gate = 0
         
     def current_time(self):
-
+        '''
+        description
+        '''
         now = datetime.now()
         val = now.strftime("%H:%M:%S")
         return val
     
     def log_message(self,msg):
-
+        '''
+        description
+        '''
         msg_timestamp = '[{}] {}'.format(self.current_time(),msg)
         logging.info(msg_timestamp)
         print(msg_timestamp)
         
     def wait_sec(self,t):
+        '''
+        description
+        '''
         for i in range(t):
             time.sleep(1)
             
     def setup_logfile(self,params):
+        '''
+        description
+        '''
 
         print('[{}] Setting up datafile and logging...'.format(self.current_time())) 
         
@@ -64,6 +74,9 @@ class Transient:
         params['LOGFILE'] = filename_log
     
     def save_config(self,params):
+        '''
+        description
+        '''
         # Save all parameters
         config_filename = params['ROOTDIR']+"\\"+params['DATADIR']+".dir\\"+self.dv.get_name()+".yml"
         with open(config_filename, 'w') as f:
@@ -71,7 +84,9 @@ class Transient:
             self.log_message("Config file written.")
             
     def get_DAC_time(self,params):
-        
+        '''
+        description
+        '''
         br_start = time.time()
         # Buffer ramp DAC
         _ = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
@@ -88,7 +103,9 @@ class Transient:
         
         
     def setup_datavault(self,params):
-        
+        '''
+        description
+        '''
         self.tempD4  = self.tempServer.tempD4
         
         self.dv.new(params['FILENAME']+'_T_{:.2f}'.format(self.tempD4)
@@ -103,13 +120,18 @@ class Transient:
                                         ('delay_ps', 'Lockin Y')))
     
     def setup_delay(self,delay_start,delay_end,pts):
+        '''
+        description
+        '''
         # Calculate delay
         self.delay_mm = np.linspace(delay_start,delay_end,pts)
         self.delay_ps = np.linspace((delay_start/0.299792485)*2,
                                     (delay_end/0.299792458)*2,pts)
         
     def voltage_ramp_dac(self,dac,ch,v_initial,v_final):
-        
+        '''
+        description
+        '''
         self.log_message("Starting DAC voltage ramp on CH {}...".format(ch))
         if v_initial == v_final:
             return
@@ -122,6 +144,9 @@ class Transient:
         self.log_message("DAC CH {} Voltage ramp ended.".format(ch))
     
     def init_delay_stage(self,params):
+        '''
+        description
+        '''
         # Delay stage settings
         self.log_message("Setting up the delay stage...")
         self.ds.gpib_write("1MO1")
@@ -133,18 +158,21 @@ class Transient:
         self.ds.gpib_write("BO 2H")
         
     def init_stage_position(self,params):
+        '''
+        description
+        '''
         # Move stage to starting position
         self.log_message("Moving stage to starting position...")
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS1000")
-        time.sleep(30)
+        time.sleep(10)
 
         # Check if stage in position
         stage_in_pos = False
         for i in range(10):
-            time.sleep(2)
-            stage_motion = self.dac.read_voltage(3)
+            time.sleep(1)
+            stage_motion = self.dac.read_voltage(7)
             if stage_motion>3.0:
                 self.log_message("Stage in position.")
                 stage_in_pos = True
@@ -159,6 +187,9 @@ class Transient:
         
 
     def save_to_datavault(self,dmm,dps,in1,in2,in3,in4,delay_pos):
+        '''
+        description
+        '''
         # Read temperature                
         self.tempD4  = self.tempServer.tempD4
         self.tempD5  = self.tempServer.tempD5
@@ -168,12 +199,17 @@ class Transient:
         self.dv.add(data)
     
     def save_to_mat(self,data,params):
-            print('[{}] Saving to *.mat...'.format(self.current_time()))
-            sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
-                        {'data': data, 'config': params})
+        '''
+        description
+        '''
+        print('[{}] Saving to *.mat...'.format(self.current_time()))
+        sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
+                    {'data': data, 'config': params})
                 
     def scan_mirror(self,params,spot):
-        
+        '''
+        description
+        '''
         # Instatiate mirror scan object
         scan = MirrorScanDAC.Scan(params, spot, self.dac, self.dac_m, False)
         print('setup complete')        
@@ -188,7 +224,9 @@ class Transient:
         scan.join()
 
     def scan_transient(self,params):
-        
+        '''
+        description
+        '''
         for i in range(params['DELAY_POINTS']):
                 percent = (self.delay_mm[i]-np.min(self.delay_mm))/(np.max(self.delay_mm)-np.min(self.delay_mm))
                 if i%10==0:
@@ -222,7 +260,9 @@ class Transient:
                                        in1, in2, in3, in4, delay_pos=0)
     
     def scan_transient_fast(self,params):
-        
+        '''
+        description
+        '''
         stage_vel = (params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])/params['DAC_TIME']
         # Start moving stage
         self.log_message("Moving to final position...")
@@ -266,6 +306,9 @@ class Transient:
         time.sleep(10)
 
     def scan_transient_sweep(self,params):
+        '''
+        description
+        '''
         try:
             for i in range(params['SWEEPS']):
 
@@ -323,6 +366,9 @@ class Transient:
             self.log_message("Sweep measurement interrupted.")
 
     def scan_transient_gate(self,params):
+        '''
+        description
+        '''
         v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
                             params['V_GATE_STEPS']+1)
         # Gate voltage ramp
@@ -380,13 +426,13 @@ def main():
     
     # Lockin - THz
     lck1 = cxn.sr860()
-    lck1.select_device()
+    lck1.select_device(1)
     lck1.time_constant(params['LIA']['TIME_CONST'])
     lck1.sensitivity(params['LIA']['SENS'])
     
     # Lockin - Transport
-    lck2 = cxn.sr830()
-    lck2.select_device()    
+    lck2 = cxn.sr860()
+    lck2.select_device(0)    
     lck2.time_constant(params['LIA_2']['TIME_CONST'])
     lck2.sensitivity(params['LIA_2']['SENS'])
     lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
