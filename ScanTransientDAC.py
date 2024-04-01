@@ -18,7 +18,9 @@ import TemperatureServer
 import MirrorScanDAC
 
 class Transient:
-    
+    '''
+    description
+    '''
     def __init__(self, params, dv, ds, dac, dac_m, ls350, tempServer):
         '''
         description
@@ -423,7 +425,7 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA']['SENS']/10.0/params['GAIN']
-        br_data[5:7] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
+        br_data[2:4] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
                                   br_data,
@@ -521,10 +523,10 @@ class Transient:
         
         '''
         v_gate_bot_ch = params['V_GATE_BOT_CH']
-        v_gate_bot_pnts = params['V_GATE_BOT_PNTS'] + 1
+        v_gate_bot_pnts = params['V_GATE_BOT_PNTS']
         v_gate_bot_rng = np.linspace(params['V_GATE_BOT_RNG'][0], params['V_GATE_BOT_RNG'][1], v_gate_bot_pnts)
         v_gate_top_ch = params['V_GATE_TOP_CH']
-        v_gate_top_pnts = params['V_GATE_TOP_PNTS'] + 1
+        v_gate_top_pnts = params['V_GATE_TOP_PNTS']
         v_gate_top_rng = np.linspace(params['V_GATE_TOP_RNG'][0], params['V_GATE_TOP_RNG'][1], v_gate_top_pnts)
         v_gate_total_pnts = v_gate_top_pnts * v_gate_bot_pnts
         # Gate voltage ramp up to starting values
