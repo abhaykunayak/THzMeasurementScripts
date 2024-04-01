@@ -19,6 +19,16 @@ import MirrorScanDAC
 class Transient:
     
     def __init__(self, params, dv, ds, dac, dac_m, ls350, tempServer):
+        '''
+        description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
+        '''
         self.idx = 0
         self.rootdir = params['ROOTDIR']
         self.datadir = params['DATADIR']
@@ -36,6 +46,13 @@ class Transient:
     def current_time(self):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         now = datetime.now()
         val = now.strftime("%H:%M:%S")
@@ -44,6 +61,13 @@ class Transient:
     def log_message(self,msg):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         msg_timestamp = '[{}] {}'.format(self.current_time(),msg)
         logging.info(msg_timestamp)
@@ -52,6 +76,13 @@ class Transient:
     def wait_sec(self,t):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         for i in range(t):
             time.sleep(1)
@@ -59,6 +90,13 @@ class Transient:
     def setup_logfile(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
 
         print('[{}] Setting up datafile and logging...'.format(self.current_time())) 
@@ -76,6 +114,13 @@ class Transient:
     def save_config(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         # Save all parameters
         config_filename = params['ROOTDIR']+"\\"+params['DATADIR']+".dir\\"+self.dv.get_name()+".yml"
@@ -86,6 +131,13 @@ class Transient:
     def get_DAC_time(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         br_start = time.time()
         # Buffer ramp DAC
@@ -105,6 +157,13 @@ class Transient:
     def setup_datavault(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         self.tempD4  = self.tempServer.tempD4
         
@@ -122,6 +181,13 @@ class Transient:
     def setup_delay(self,delay_start,delay_end,pts):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+
         '''
         # Calculate delay
         self.delay_mm = np.linspace(delay_start,delay_end,pts)
@@ -130,22 +196,45 @@ class Transient:
         
     def voltage_ramp_dac(self,dac,ch,v_initial,v_final):
         '''
-        description
+        Ramp the voltage of a DAC channel.
+
+        Parameters
+        ----------
+        dac : larbad connection object
+
+        ch : integer
+            channel number between 0 and 3
+
+        v_initial : integer
+            initial voltage of the DAC channel
+
+        v_final : integer
+            final voltage of the DAC channel
+
+        Returns
+        -------
+        None
+
         '''
         self.log_message("Starting DAC voltage ramp on CH {}...".format(ch))
         if v_initial == v_final:
             return
-        step = 20
-        v_steps = np.linspace(v_initial, v_final, step)
-        for i in range(step):
-            dac.set_voltage(ch,v_steps[i])
-            time.sleep(0.2)
-        time.sleep(1)
+        self.log_message("Ramping up gate voltage from {:.3f} V to {:.3f} V ...".format(v_initial,v_final))
+        _ = dac.buffer_ramp([ch], [0],
+                        [v_initial], [v_final], 1000, 2000, 1)
+        
         self.log_message("DAC CH {} Voltage ramp ended.".format(ch))
     
     def init_delay_stage(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         # Delay stage settings
         self.log_message("Setting up the delay stage...")
@@ -160,6 +249,13 @@ class Transient:
     def init_stage_position(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         # Move stage to starting position
         self.log_message("Moving stage to starting position...")
@@ -189,6 +285,13 @@ class Transient:
     def save_to_datavault(self,dmm,dps,in1,in2,in3,in4,delay_pos):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         # Read temperature                
         self.tempD4  = self.tempServer.tempD4
@@ -201,6 +304,13 @@ class Transient:
     def save_to_mat(self,data,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         print('[{}] Saving to *.mat...'.format(self.current_time()))
         sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
@@ -209,6 +319,13 @@ class Transient:
     def scan_mirror(self,params,spot):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         # Instatiate mirror scan object
         scan = MirrorScanDAC.Scan(params, spot, self.dac, self.dac_m, False)
@@ -226,6 +343,13 @@ class Transient:
     def scan_transient(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         for i in range(params['DELAY_POINTS']):
                 percent = (self.delay_mm[i]-np.min(self.delay_mm))/(np.max(self.delay_mm)-np.min(self.delay_mm))
@@ -262,6 +386,13 @@ class Transient:
     def scan_transient_fast(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         stage_vel = (params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])/params['DAC_TIME']
         # Start moving stage
@@ -308,6 +439,13 @@ class Transient:
     def scan_transient_sweep(self,params):
         '''
         description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
         '''
         try:
             for i in range(params['SWEEPS']):
@@ -368,23 +506,42 @@ class Transient:
     def scan_transient_gate(self,params):
         '''
         description
-        '''
-        v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
-                            params['V_GATE_STEPS']+1)
-        # Gate voltage ramp
-        self.log_message("Ramping to intermediate gate voltage: {:.3f}...".format(params['VIMD']))
-        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],0,params['VIMD'])
-        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],params['VIMD'],v_rng[0])
 
-        for i in v_rng:
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
+        '''
+        v_steps = params['V_GATE_STEPS']+1
+        v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
+                            v_steps)
+        
+        # Gate voltage ramp up
+        v_next = 0.0
+        v_last = v_rng[-1]
+        self.log_message("Ramping up gate voltage to starting voltage: {:.3f} V ...".format(v_last))
+        _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
+                        [0.0], [v_last], 1000, 2000, 1)
+        
+        # Gate voltage ramp for measurements
+        for i in np.arange(v_steps):
             # Gate Voltage
-            self.log_message("Setting gate voltage: {:.3f}...".format(i))
-            self.dac.set_voltage(params['V_GATE_CH'],i)
-            self.v_gate = i
-            self.scan_transient_sweep(params)
+            v_next = v_rng[i]
+            self.log_message("Setting gate voltage: {:.3f}...".format(v_next))
+            _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
+                                    [v_last], [v_next], 1000, 2000, 1)   
+            
+            self.v_gate = v_next
+            # self.scan_transient_sweep(params)
+            v_last = v_next
          
-        # Gate voltage ramp
-        self.voltage_ramp_dac(self.dac,params['V_GATE_CH'],v_rng[-1],0)
+        # Gate voltage ramp down
+        v_next = 0
+        self.log_message("Ramping down gate voltage from {:.3f} V to {:.3f} V ...".format(v_last,0))
+        _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
+                                [v_last], [v_next], 1000, 2000, 1)  
              
 def main():
     
@@ -472,10 +629,10 @@ def main():
 
     try:
         # Sweeps
-        scanTransient.scan_transient_sweep(params)
+        # scanTransient.scan_transient_sweep(params)
 
         # Gate
-        # scanTransient.scan_transient_gate(params)
+        scanTransient.scan_transient_gate(params)
 
         # Kill Temperature serverp
         tempServer.stop_thread = True
