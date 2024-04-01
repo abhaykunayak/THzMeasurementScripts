@@ -12,6 +12,7 @@ import labrad
 import yaml
 from datetime import datetime
 import os
+import glob
 import logging
 import TemperatureServer
 import MirrorScanDAC
@@ -58,7 +59,7 @@ class Transient:
         val = now.strftime("%H:%M:%S")
         return val
     
-    def log_message(self,msg):
+    def log_message(self, msg):
         '''
         description
 
@@ -89,14 +90,15 @@ class Transient:
             
     def setup_logfile(self,params):
         '''
-        description
+        Setup the logfile
 
         Parameters
         ----------
+        params : params
 
         Returns
         -------
-        
+        None
         '''
 
         print('[{}] Setting up datafile and logging...'.format(self.current_time())) 
@@ -104,12 +106,16 @@ class Transient:
         # Change the working directory
         fullpath = os.path.join(params['ROOTDIR'],params['DATADIR']+'.dir')
         os.chdir(fullpath)
+        files = glob.glob(fullpath+'\*.hdf5')
+        if files == []:
+            latest_file_num = 1
+        latest_file = max(files, key=os.path.getctime)
+        latest_file_num = int(os.path.basename(latest_file)[0:5]) + 1
+        filename_log = '{:05d} - logfile.log'.format(latest_file_num)
         
         # Setup logging
-        filename_log = "{}_{}.log".format(datetime.now().strftime("%Y%m%d%H%M%S"),params['FILENAME'])
         logging.basicConfig(filename="{}".format(filename_log), level=logging.INFO, force=True)
-        self.log_message('Started logging...')
-        params['LOGFILE'] = filename_log
+        self.log_message('Started logging into {}'.format(filename_log))
     
     def save_config(self,params):
         '''
@@ -194,7 +200,7 @@ class Transient:
         self.delay_ps = np.linspace((delay_start/0.299792485)*2,
                                     (delay_end/0.299792458)*2,pts)
         
-    def voltage_ramp_dac(self,dac,ch,v_initial,v_final):
+    def voltage_ramp_dac(self, dac, ch: list, v_initial: list, v_final: list):
         '''
         Ramp the voltage of a DAC channel.
 
@@ -202,13 +208,13 @@ class Transient:
         ----------
         dac : larbad connection object
 
-        ch : integer
+        ch : list
             channel number between 0 and 3
 
-        v_initial : integer
+        v_initial : list
             initial voltage of the DAC channel
 
-        v_final : integer
+        v_final : list
             final voltage of the DAC channel
 
         Returns
@@ -219,9 +225,9 @@ class Transient:
         self.log_message("Starting DAC voltage ramp on CH {}...".format(ch))
         if v_initial == v_final:
             return
-        self.log_message("Ramping up gate voltage from {:.3f} V to {:.3f} V ...".format(v_initial,v_final))
-        _ = dac.buffer_ramp([ch], [0],
-                        [v_initial], [v_final], 1000, 2000, 1)
+        self.log_message("Ramping gate voltage from {} V to {} V ...".format(v_initial,v_final))
+        _ = dac.buffer_ramp(ch, [0],
+                        v_initial, v_final, 1000, 2000, 1)
         
         self.log_message("DAC CH {} Voltage ramp ended.".format(ch))
     
@@ -503,7 +509,7 @@ class Transient:
         except KeyboardInterrupt:
             self.log_message("Sweep measurement interrupted.")
 
-    def scan_transient_gate(self,params):
+    def scan_transient_gate2D(self,params):
         '''
         description
 
@@ -514,34 +520,46 @@ class Transient:
         -------
         
         '''
-        v_steps = params['V_GATE_STEPS']+1
-        v_rng = np.linspace(params['V_GATE_I'],params['V_GATE_F'],
-                            v_steps)
+        v_gate_bot_ch = params['V_GATE_BOT_CH']
+        v_gate_bot_pnts = params['V_GATE_BOT_PNTS'] + 1
+        v_gate_bot_rng = np.linspace(params['V_GATE_BOT_RNG'][0], params['V_GATE_BOT_RNG'][1], v_gate_bot_pnts)
+        v_gate_top_ch = params['V_GATE_TOP_CH']
+        v_gate_top_pnts = params['V_GATE_TOP_PNTS'] + 1
+        v_gate_top_rng = np.linspace(params['V_GATE_TOP_RNG'][0], params['V_GATE_TOP_RNG'][1], v_gate_top_pnts)
+        v_gate_total_pnts = v_gate_top_pnts * v_gate_bot_pnts
+        # Gate voltage ramp up to starting values
+        v_gate_bot_next = 0.0
+        v_gate_bot_last = v_gate_bot_rng[0]
+        v_gate_top_next = 0.0
+        v_gate_top_last = v_gate_top_rng[0]
         
-        # Gate voltage ramp up
-        v_next = 0.0
-        v_last = v_rng[-1]
-        self.log_message("Ramping up gate voltage to starting voltage: {:.3f} V ...".format(v_last))
-        _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
-                        [0.0], [v_last], 1000, 2000, 1)
+        self.log_message("Ramping up gate voltage to starting voltage: {} V ...".format([v_gate_bot_last, v_gate_top_last]))
+        self.voltage_ramp_dac(self.dac, [v_gate_bot_ch, v_gate_top_ch], [v_gate_bot_next, v_gate_top_next], [v_gate_bot_last, v_gate_top_last])
         
         # Gate voltage ramp for measurements
-        for i in np.arange(v_steps):
-            # Gate Voltage
-            v_next = v_rng[i]
-            self.log_message("Setting gate voltage: {:.3f}...".format(v_next))
-            _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
-                                    [v_last], [v_next], 1000, 2000, 1)   
+        for i in np.arange(v_gate_top_pnts):
+            # Top Gate Voltage
+            v_gate_top_next = v_gate_top_rng[i]
+            self.log_message("Gate sweep # {}/{}".format((i+i*v_gate_bot_pnts),v_gate_total_pnts))
+            self.log_message("Ramping up top gate voltage to: {} V ...".format([v_gate_top_next]))
+            self.voltage_ramp_dac(self.dac, [v_gate_top_ch], [v_gate_top_last], [v_gate_top_next])
+
+            for j in np.arange(v_gate_bot_pnts):
+                # Bottom Gate Voltage
+                v_gate_bot_next = v_gate_bot_rng[j]
+                self.log_message("Ramping up bottom gate voltage to: {} V ...".format([v_gate_bot_next]))
+                self.voltage_ramp_dac(self.dac, [v_gate_bot_ch], [v_gate_bot_last], [v_gate_bot_next])
+                
+                self.v_gate = 0.0
+                # self.scan_transient_sweep(params)
+
+                v_gate_bot_last = v_gate_bot_next
+
+            v_gate_top_last = v_gate_top_next
             
-            self.v_gate = v_next
-            # self.scan_transient_sweep(params)
-            v_last = v_next
-         
         # Gate voltage ramp down
-        v_next = 0
-        self.log_message("Ramping down gate voltage from {:.3f} V to {:.3f} V ...".format(v_last,0))
-        _ = self.dac.buffer_ramp([params['V_GATE_CH']], [0],
-                                [v_last], [v_next], 1000, 2000, 1)  
+        self.log_message("Ramping down gate voltages from {} V to 0 V...".format([v_gate_bot_last, v_gate_top_last]))
+        self.voltage_ramp_dac(self.dac, [v_gate_bot_ch, v_gate_top_ch], [v_gate_bot_last, v_gate_top_last], [0.0, 0.0])
              
 def main():
     
@@ -588,12 +606,12 @@ def main():
     lck1.sensitivity(params['LIA']['SENS'])
     
     # Lockin - Transport
-    lck2 = cxn.sr860()
-    lck2.select_device(0)    
-    lck2.time_constant(params['LIA_2']['TIME_CONST'])
-    lck2.sensitivity(params['LIA_2']['SENS'])
-    lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
-    lck2.frequency(params['LIA_2']['FREQ'])
+    # lck2 = cxn.sr860()
+    # lck2.select_device(0)    
+    # lck2.time_constant(params['LIA_2']['TIME_CONST'])
+    # lck2.sensitivity(params['LIA_2']['SENS'])
+    # lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
+    # lck2.frequency(params['LIA_2']['FREQ'])
 
     # DataVault
     dv = cxn.data_vault
@@ -625,14 +643,14 @@ def main():
     scanTransient.log_message('Measurement Started')
     
     # Voltage ramp up on E SMU
-    scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],0,params['BIAS_E'])
+    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[0],[params['BIAS_E']])
 
     try:
         # Sweeps
         # scanTransient.scan_transient_sweep(params)
 
         # Gate
-        scanTransient.scan_transient_gate(params)
+        scanTransient.scan_transient_gate2D(params)
 
         # Kill Temperature serverp
         tempServer.stop_thread = True
@@ -644,7 +662,7 @@ def main():
     scanTransient.init_stage_position(params)
     
     # Voltage ramp down
-    scanTransient.voltage_ramp_dac(dac,params['DAC_OUTPUT_CH'],params['BIAS_E'],0)
+    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[params['BIAS_E']],[0])
 
     # Measurements end
     scanTransient.log_message("Measurement Ended.")

@@ -42,12 +42,17 @@ FPOINTS: 5000
 SAMPLING: 0.1
 READINGS: 1
 
-VIMD: 0.0
-V_GATE_I: -2.0
-V_GATE_F: 2.0
-V_GATE_STEPS: 5
-V_GATE_CH: 1
-VGAIN: 1000
+V_GATE_BOT_CH: 1    # fast axis
+V_GATE_BOT_RNG:
+  - -2.0
+  - 2.0
+V_GATE_BOT_PNTS: 4  # code adds 1
+
+V_GATE_TOP_CH: 2    # slow axis
+V_GATE_TOP_RNG:
+  - -0.5
+  - 0.5
+V_GATE_TOP_PNTS: 0 # code adds 1
 
 T_INITIAL: 95.0
 T_FINAL: 120.0
