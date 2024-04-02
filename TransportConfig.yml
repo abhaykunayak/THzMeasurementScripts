@@ -1,39 +1,65 @@
-ROOTDIR: r'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
-DATADIR: '2024_02_21_AKNDB27_1A'
-FILENAME: "transport"
+ROOTDIR: 'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
+DATADIR: '2024_03_30_AKN_BLG_20'
+FILENAME: transport
+
+MEASUREMENT: 'transport' # options: 'transport' and 'thz'
 
 DEPENDENTS:
-- SWEEP
-- V_GATE
+  - n0 idx
+  - p0 idx 
+  - n0
+  - p0
+  - vb
+  - vt
 INDEPENDENTS:
-- V1 [V]
-- Lockin X [A]
-- Lockin Y [A]
-- Temp D4 [K]
-- Temp D5 [K]
+  - Lockin THz X [A]
+  - Lockin THz Y [A]
+  - Lockin Transport X [V]
+  - Lockin Transport Y [V]
+  - Temp D4 [K]
+  - Temp D5 [K]
 
-LIA:
-  TIME_CONST: 0.1
-  SENS: 20.0e-6
-  FREQ: 107.777
-  AMPL: 0.1
+LIA_THZ:
+  TIME_CONST: 0.1   # s
+  SENS: 100.0e-3    # V
 
-IAC: 10.0e-9
+GAIN: 1.0e+8
+
+LIA_R:
+  TIME_CONST: 0.1   # s
+  SENS: 100.0e-6    # V
+  FREQ: 117.777     # Hz
+  AMPL: 10.0e-3     # V
+
+IAC: 10.0e-9        # A
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
-DAC_CONV_TIME: 500
+DAC_CONV_TIME: 250
 SAMPLING: 0.1
-AVGS: 100
+AVGS: 1
 
-SWEEPS: 1
-
-V_GATE_CH: 1
 DAC_IN_CH:
-- 4
-- 5
-- 6
+  - 0           # Lockin THz X
+  - 1           # Lockin THz Y
+  - 2           # Lockin Transport X
+  - 3           # Lockin Transport Y
 
-VIMD: 0.0
-V_GATE_I: 0.0
-V_GATE_F: -4.0
-V_GATE_STEPS: 200
+DAC_OUT_CH:
+  - 1           # top gate 
+  - 2           # bottom gate
+
+MEAS_PARAMS:
+  n0_PNTS: 100
+  p0_PNTS: 5
+  n0_RANGE:     # fast axis
+    - -2.0
+    - 2.0
+  p0_RANGE:     # slow axis
+    - -5.0
+    - 5.0
+  DELTA: -0.607   # gate asymmetry
+
+  MAX_vb: 5.0
+  MAX_vt: 5.0   # 
+  MIN_vb: -5.0
+  MIN_vt: -5.0  # 
