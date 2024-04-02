@@ -93,6 +93,16 @@ class Transport(Thread):
                params['DEPENDENTS'],
                params['INDEPENDENTS'])
         
+        dv.add_parameter('n0_rng', params['MEAS_PARAMS']['n0_RANGE'])
+        dv.add_parameter('p0_rng', params['MEAS_PARAMS']['p0_RANGE'])
+        dv.add_parameter('n0_pnts', params['MEAS_PARAMS']['n0_PNTS'])
+        dv.add_parameter('p0_pnts', params['MEAS_PARAMS']['p0_PNTS'])
+
+        dv.add_parameter('live_plots', (('n0', 'Lockin Transport X'), 
+                                        ('n0', 'Lockin THz X'), 
+                                        ('n0', 'p0', 'Lockin Transport X'), 
+                                        ('n0', 'p0', 'Lockin THz X')))
+        
         self.log_message('Data vault file: {}'.format(dv.get_name()))
 
         self.dv = dv
