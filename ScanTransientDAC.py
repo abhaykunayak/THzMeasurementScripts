@@ -32,6 +32,7 @@ class Transient:
         -------
         
         '''
+        self.params = params
         self.idx = 0
         self.rootdir = params['ROOTDIR']
         self.datadir = params['DATADIR']
@@ -44,7 +45,6 @@ class Transient:
         self.tempServer = tempServer
         self.I_e = 0
         self.I_a = 0
-        self.v_gate = 0
         
     def current_time(self):
         '''
@@ -175,14 +175,14 @@ class Transient:
         '''
         self.tempD4  = self.tempServer.tempD4
         
-        self.dv.new(params['FILENAME']+'_T_{:.2f}'.format(self.tempD4)
-                    +'_Vg_{:03d}mV'.format(int(self.v_gate*1e3))+'_sw_{:02d}'.format(self.idx), 
-                    params['DEPENDENTS'], params['INDEPENDENTS'])
+        self.dv.new(params['FILENAME'], params['DEPENDENTS'], 
+                    params['INDEPENDENTS'])
         
         self.dv.add_parameter('delay_mm_rng', (params['DELAY_RANGE_MM']))
         self.dv.add_parameter('delay_mm_pnts', params['DELAY_POINTS'])
         self.dv.add_parameter('delay_ps_rng', (params['DELAY_RANGE_MM']))
         self.dv.add_parameter('delay_ps_pnts',  params['DELAY_POINTS'])
+        
         self.dv.add_parameter('live_plots', (('delay_ps', 'Lockin X'), 
                                         ('delay_ps', 'Lockin Y')))
     
@@ -309,7 +309,7 @@ class Transient:
                          self.I_e,self.I_a,delay_pos])
         self.dv.add(data)
     
-    def save_to_mat(self,data,params):
+    def save_to_mat(self):
         '''
         description
 
@@ -321,6 +321,8 @@ class Transient:
         
         '''
         print('[{}] Saving to *.mat...'.format(self.current_time()))
+        data = self.dv.get()
+        params = self.params
         sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
                     {'data': data, 'config': params})
                 
@@ -391,7 +393,7 @@ class Transient:
                 self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
                                        in1, in2, in3, in4, delay_pos=0)
     
-    def scan_transient_fast(self,params):
+    def scan_transient_fast(self,params,sweep_num):
         '''
         description
 
@@ -427,14 +429,15 @@ class Transient:
         br_data[0:2] = br_data[0:2]*params['LIA']['SENS']/10.0/params['GAIN']
         br_data[2:4] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
         
-        dv_data = np.concatenate(([self.delay_mm], [self.delay_ps],
-                                  br_data,
-                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
-                                  np.ones((1,params['FPOINTS']))*self.tempServer.tempD5
-                                  ),axis=0).T
+        dv_data = np.concatenate((
+                                np.ones((1,params['FPOINTS']))*sweep_num, 
+                                [self.delay_mm], [self.delay_ps],
+                                br_data,
+                                np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
+                                np.ones((1,params['FPOINTS']))*self.tempServer.tempD5
+                                ),axis=0).T
         
         self.dv.add(dv_data)
-        self.save_to_mat(dv_data,params)
             
         # Start moving stage
         self.log_message("Moving to start position...")
@@ -456,40 +459,27 @@ class Transient:
         
         '''
         try:
-            for i in range(params['SWEEPS']):
+            # Setup DataVault file and Config file
+            self.log_message("Setting up datavault and config file...")
+            self.setup_datavault(params)
+            self.save_config(params)
 
+            for i in range(params['SWEEPS']):
+                self.idx = i
                 # Sweep
                 self.log_message("Starting sweep #{:03d}...".format(i))
                 
-                if params['MIRROR_SCAN']:
-                    # Check current on E and A
-                    self.log_message("Checking for max current on E switch...")
-                    self.log_message("Moving stage to {} mm.".format(params['STAGE_POS']))
-                    self.ds.move_absolute(1,params['STAGE_POS'])
-                    time.sleep(2)
-                    for j in range(20):
-                        curr_pos = self.dac.read_voltage(3)
-                        if curr_pos>3.0:
-                            self.log_message("Stage in position.")
-                            break
-                        else:
-                            self.log_message("Waiting for stage position...")
-                        time.sleep(2)
-
-                    self.scan_mirror(params,'E')
-                    self.scan_mirror(params,'A')
-
                 # Initialize the delay stage
                 self.init_delay_stage(params)
                 
                 # Initialize the stage to starting position
                 self.init_stage_position(params)
                 
-                # Setup DataVault file and Config file
-                self.log_message("Setting up datavault and config file...")
-                self.idx = i
-                self.setup_datavault(params)
-                self.save_config(params)
+                if params['MIRROR_SCAN']:
+                    # Check current on E and A
+                    self.log_message("Checking for max current on E switch...")
+                    self.scan_mirror(params,'E')
+                    self.scan_mirror(params,'A')
                 
                 # Transient
                 self.log_message("Starting transient measurement...")
@@ -504,10 +494,10 @@ class Transient:
                 self.dac.stop_ramp()
 
                 if params['MEASURE_MODE'] == 'FAST':
-                    self.scan_transient_fast(params)
+                    self.scan_transient_fast(params,i)
                 else:
                     self.scan_transient(params)
-                
+                        
         except KeyboardInterrupt:
             self.log_message("Sweep measurement interrupted.")
 
@@ -552,8 +542,8 @@ class Transient:
                 self.log_message("Ramping up bottom gate voltage to: {} V ...".format([v_gate_bot_next]))
                 self.voltage_ramp_dac(self.dac, [v_gate_bot_ch], [v_gate_bot_last], [v_gate_bot_next])
                 
-                self.v_gate = 0.0
-                # self.scan_transient_sweep(params)
+                # Measure transient
+                self.scan_transient_sweep(params)
 
                 v_gate_bot_last = v_gate_bot_next
 
@@ -608,12 +598,12 @@ def main():
     lck1.sensitivity(params['LIA']['SENS'])
     
     # Lockin - Transport
-    # lck2 = cxn.sr860()
-    # lck2.select_device(0)    
-    # lck2.time_constant(params['LIA_2']['TIME_CONST'])
-    # lck2.sensitivity(params['LIA_2']['SENS'])
-    # lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
-    # lck2.frequency(params['LIA_2']['FREQ'])
+    lck2 = cxn.sr860()
+    lck2.select_device(0)    
+    lck2.time_constant(params['LIA_2']['TIME_CONST'])
+    lck2.sensitivity(params['LIA_2']['SENS'])
+    lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
+    lck2.frequency(params['LIA_2']['FREQ'])
 
     # DataVault
     dv = cxn.data_vault
@@ -666,6 +656,8 @@ def main():
     # Voltage ramp down
     scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[params['BIAS_E']],[0])
 
+    # save data in mat format
+    scanTransient.save_to_mat()
     # Measurements end
     scanTransient.log_message("Measurement Ended.")
     end = time.time()

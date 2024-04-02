@@ -4,6 +4,7 @@ DATADIR: '2024_03_30_AKN_BLG_20'
 FILENAME: transient
 
 DEPENDENTS:
+- sweep_num
 - delay_mm
 - delay_ps
 INDEPENDENTS:
@@ -36,14 +37,14 @@ LIA_2:
   AMPL: 0.0
   FREQ: 117.7777
 
-SWEEPS: 10
+SWEEPS: 2
 AVGS: 5
 FPOINTS: 5000
 SAMPLING: 0.1
 READINGS: 1
 
 V_GATE_BOT_CH: 1    # fast axis
-V_GATE_BOT_PNTS: 4  
+V_GATE_BOT_PNTS: 1  
 V_GATE_BOT_RNG:
   - -2.0
   - 2.0
