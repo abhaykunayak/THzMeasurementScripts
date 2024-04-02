@@ -116,6 +116,23 @@ class Transport(Thread):
         sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
                     {'data':data, 'config': params})
     
+    def save_config(self,params):
+        '''
+        description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
+        '''
+        # Save all parameters
+        config_filename = params['ROOTDIR']+"\\"+params['DATADIR']+".dir\\"+self.dv.get_name()+".yml"
+        with open(config_filename, 'w') as f:
+            yaml.dump(params, f, sort_keys=False, default_flow_style=False)
+            self.log_message("Config file written.")
+
     def voltage_ramp_dac(self, dac, ch: list, v_initial: list, v_final: list):
         '''
         Ramp the voltage of a DAC channel.
@@ -350,6 +367,9 @@ def main():
 
     # Measure
     rt.scan_gate(params)
+    
+    # Save config file
+    rt.save_config(params)
 
     # Save data to matlab
     rt.save_to_mat(params)
