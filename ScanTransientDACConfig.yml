@@ -37,17 +37,33 @@ LIA_THZ:
   TIME_CONST: 0.1
   SENS: 5.0e-3
 
-LIA_2:
+LIA_R:
   TIME_CONST: 0.1
   SENS: 20.0e-6
   AMPL: 10.0e-3
   FREQ: 117.7777
 
-SWEEPS: 3
+SWEEPS: 1
 AVGS: 5
 FPOINTS: 5000
 SAMPLING: 0.1
 READINGS: 1
+
+MEAS_PARAMS:
+  n0_PNTS: 3
+  p0_PNTS: 1
+  n0_RANGE:     # fast axis
+    - -1.0
+    - 1.0
+  p0_RANGE:     # slow axis
+    - -1.0
+    - -1.0
+  DELTA: -0.607   # gate asymmetry
+
+  MAX_vb: 2.0
+  MAX_vt: 2.0   # 
+  MIN_vb: -2.0
+  MIN_vt: -2.0  # 
 
 V_GATE_TOP_CH: 1    # slow axis
 V_GATE_TOP_PNTS: 1
@@ -94,24 +110,27 @@ A:
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
 DAC_CONV_TIME: 250
-DAC_OUTPUT_CH: 0
+DAC_OUTPUT_CH: 0        # Bias E
+DAC_OUT_CH:
+  - 1                   # top gate
+  - 2                   # bottom gate
 DAC_OUTPUT_CH_DUMMY:
-- 3
+  - 3
 DAC_INPUT_CH:
-- 0         # THz LX
-- 1         # THz LY
-- 2         # Transport LX 
-- 3         # Transport LY
-- 4         #
-- 5         #
-- 6         # Optical Encoder
-- 7         # Stage flag
+  - 0         # THz LX
+  - 1         # THz LY
+  - 2         # Transport LX 
+  - 3         # Transport LY
+  - 4         #
+  - 5         #
+  - 6         # Optical Encoder
+  - 7         # Stage flag
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_M_CH:
-- 0         # X - E
-- 1         # Y - E
-- 2         # X - A
-- 3         # Y - A
+  - 0         # X - E
+  - 1         # Y - E
+  - 2         # X - A
+  - 3         # Y - A
 DAC_CH_Y: 1
 DAC_CH_X: 0
 DELAY: 0.1

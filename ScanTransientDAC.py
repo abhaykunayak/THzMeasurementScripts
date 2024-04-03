@@ -326,6 +326,51 @@ class Transient:
         sio.savemat(self.datapath+"\\"+self.dv.get_name()+".mat",
                     {'data': data, 'config': params})
                 
+    def find_vt_vb_n0p0(self, p0, n0, c_delta):
+        '''
+        Converts (n0,p0) to (vb,vt) 
+
+        Parameters
+        ----------
+        p0 : float
+        n0 : float
+        c_delta : float
+            asymmetry of the top and bottom gates.
+
+        Returns
+        -------
+        vt : float
+        vb : float
+
+        '''
+        return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta)
+    
+    def mesh_n0p0(self, p0_range, n0_range, delta, pxsize):
+        """
+        mesh function to convert n0,p0 to vb,vt
+
+        Parameters
+        ----------
+        p0_range : (float, float)
+        n0_range : (float, float)
+        delta: float
+        pxsize : (int, int)
+
+        Returns
+        -------
+        (v_fast, v_slow), (p0, n0) : ([float],[float]), ([float],[float])
+
+        """
+        
+        p0 = np.linspace(p0_range[0], p0_range[1], pxsize[1])
+        n0 = np.linspace(n0_range[0], n0_range[1], pxsize[0])
+        
+        n0, p0 = np.meshgrid(n0, p0)  # p0 - slow; n0 - fast
+        
+        v_fast, v_slow = self.find_vt_vb_n0p0(p0, n0, delta)
+
+        return np.dstack((v_fast, v_slow)), np.dstack((p0, n0))
+    
     def scan_mirror(self,params,spot):
         '''
         description
@@ -428,7 +473,7 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-        br_data[2:4] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
+        br_data[2:4] = br_data[5:7]*params['LIA_R']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate((
                                 np.ones((1,params['FPOINTS']))*sweep_num,
@@ -471,7 +516,7 @@ class Transient:
             for i in range(params['SWEEPS']):
                 self.idx = i
                 # Sweep
-                self.log_message("Starting sweep #{:03d}...".format(i))
+                self.log_message("Starting sweep #{:02d}...".format(i))
                 
                 # Initialize the delay stage
                 self.init_delay_stage(params)
@@ -556,6 +601,79 @@ class Transient:
         # Gate voltage ramp down
         self.log_message("Ramping down gate voltages from {} V to 0 V...".format([v_gate_bot_last, v_gate_top_last]))
         self.voltage_ramp_dac(self.dac, [v_gate_bot_ch, v_gate_top_ch], [v_gate_bot_last, v_gate_top_last], [0.0, 0.0])
+
+    def scan_transient_gate2D_n0p0(self,params):
+        '''
+        description
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        
+        '''
+        meas_params = params['MEAS_PARAMS']
+
+        pxsize = (meas_params['n0_PNTS'], meas_params['p0_PNTS'])
+        extent = (meas_params['n0_RANGE'][0], meas_params['n0_RANGE'][1], 
+                meas_params['p0_RANGE'][0], meas_params['p0_RANGE'][1])
+        num_n0 = pxsize[0]
+        num_p0 = pxsize[1]
+
+        mesh_vtvb, mesh_p0n0 = self.mesh_n0p0(p0_range = (extent[2], extent[3]),
+                n0_range = (extent[0], extent[1]), delta = meas_params['DELTA'],
+                pxsize = pxsize)
+
+        for i in np.arange(num_p0):
+            self.log_message("p0 sweep: {}/{}".format(i,num_p0))
+            
+            # Extract real voltages for vt and vb
+            vec_vt = mesh_vtvb[i, :][:, 0]
+            vec_vb = mesh_vtvb[i, :][:, 1]
+
+            mesh_p0 = mesh_p0n0[i, :][:, 0]
+            mesh_n0 = mesh_p0n0[i, :][:, 1]
+
+            # Check voltage limits
+            mask = np.logical_and(np.logical_and(vec_vt <= meas_params['MAX_vt'], 
+                                            vec_vt >= meas_params['MIN_vt']),
+                              np.logical_and(vec_vb <= meas_params['MAX_vb'], 
+                                            vec_vt >= meas_params['MIN_vb']))
+        
+            if np.any(mask == True):
+                start, stop = np.where(mask == True)[0][0], np.where(mask == True)[0][-1]
+                num_points = stop - start + 1
+
+                if i == 0:
+                    self.log_message('Ramping up to starting gate voltages...')
+                    self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                            [0.0, 0.0], [vec_vt[start], vec_vb[start]])
+                else:
+                    self.log_message('Ramping gate voltages for next p0...')
+                    self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                            [last_vt, last_vb], [vec_vt[start], vec_vb[start]])
+                    
+                for j in np.arange(num_points):
+                    self.log_message("Current sweep: \n \t p0 = {}, n0 = {} \n \t vt = {} V, vb = {} V".format(mesh_p0[start+j], mesh_n0[start+j], vec_vt[start+j], vec_vb[start+j]))
+                    
+                    self.log_message('Ramping gate voltages for next n0...')
+                    self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                            [vec_vt[start], vec_vb[start]], [vec_vt[start+j], vec_vb[start+j]])
+
+                    # THa measurement
+                    self.scan_transient_sweep(params,n0_idx=j,p0_idx=i,n0=mesh_n0[start+j], p0=mesh_p0[start+j],vb=vec_vb[start+j],vt=vec_vt[start+j])
+
+                last_vt = vec_vt[stop]
+                last_vb = vec_vb[stop]
+            
+            else:
+                self.log_message('Error: Max voltage limit for all gates.')
+
+        # Ramp down all gate voltages
+        self.log_message('Ramping down gate voltages...')
+        self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                              [last_vt, last_vb], [0.0, 0.0])
              
 def main():
     
@@ -604,10 +722,10 @@ def main():
     # Lockin - Transport
     lck2 = cxn.sr860()
     lck2.select_device(0)    
-    lck2.time_constant(params['LIA_2']['TIME_CONST'])
-    lck2.sensitivity(params['LIA_2']['SENS'])
-    lck2.sine_out_amplitude(params['LIA_2']['AMPL'])
-    lck2.frequency(params['LIA_2']['FREQ'])
+    lck2.time_constant(params['LIA_R']['TIME_CONST'])
+    lck2.sensitivity(params['LIA_R']['SENS'])
+    lck2.sine_out_amplitude(params['LIA_R']['AMPL'])
+    lck2.frequency(params['LIA_R']['FREQ'])
 
     # DataVault
     dv = cxn.data_vault
@@ -651,7 +769,7 @@ def main():
         # scanTransient.scan_transient_sweep(params)
 
         # Gate
-        scanTransient.scan_transient_gate2D(params)
+        scanTransient.scan_transient_gate2D_n0p0(params)
             
     except Exception as error:
         scanTransient.log_message("Safe exit in process. {}".format(error))
