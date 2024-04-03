@@ -154,7 +154,7 @@ class Transient:
                                             [0.0],
                                             [0.0],
                                             params['FPOINTS'],
-                                            params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
+                                            params['SAMPLING']*params['LIA_THZ']['TIME_CONST']*1e6,
                                             params["READINGS"]),dtype=np.float64)   
         
         br_end = time.time()
@@ -371,7 +371,7 @@ class Transient:
                 try:
                     self.ds.gpib_write("1PA{:.6f}".format(self.delay_mm[i]))
                     self.ds.gpib_write("1WS")
-                    time.sleep(params['LIA']['TIME_CONST']*5)
+                    time.sleep(params['LIA_THZ']['TIME_CONST']*5)
                     # delay_pos = float(self.ds.gpib_query("1TP?"))
                 except:
                     self.log_message("Stage movement error.")
@@ -382,18 +382,19 @@ class Transient:
                                                    [0.0],
                                                    [0.0],
                                                    1,
-                                                   params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
+                                                   params['SAMPLING']*params['LIA_THZ']['TIME_CONST']*1e6,
                                                    params['AVGS']))
 
-                in1 = br_data[0][0]*params['LIA']['SENS']/10.0/params['GAIN']
-                in2 = br_data[1][0]*params['LIA']['SENS']/10.0/params['GAIN']
-                in3 = br_data[2][0]*params['LIA']['SENS']/10.0/params['GAIN']
-                in4 = br_data[3][0]*params['LIA']['SENS']/10.0/params['GAIN']
+                in1 = br_data[0][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                in2 = br_data[1][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                in3 = br_data[2][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                in4 = br_data[3][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
                 
                 self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
                                        in1, in2, in3, in4, delay_pos=0)
     
-    def scan_transient_fast(self,params,sweep_num):
+    def scan_transient_fast(self, params, sweep_num = 0, 
+                            n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0, vb = 0.0, vt = 0.0):
         '''
         description
 
@@ -419,19 +420,25 @@ class Transient:
                                             [0.0],
                                             [0.0],
                                             params['FPOINTS'],
-                                            params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
+                                            params['SAMPLING']*params['LIA_THZ']['TIME_CONST']*1e6,
                                             params["READINGS"]),dtype=np.float64)   
         
         br_end = time.time()
         self.log_message("Finished reading buffer in {:.6f}s.".format(br_end-br_start))
         
         # Save data tp Data Vault
-        br_data[0:2] = br_data[0:2]*params['LIA']['SENS']/10.0/params['GAIN']
+        br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
         br_data[2:4] = br_data[5:7]*params['LIA_2']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate((
-                                np.ones((1,params['FPOINTS']))*sweep_num, 
+                                np.ones((1,params['FPOINTS']))*sweep_num,
+                                np.ones((1,params['FPOINTS']))*n0_idx,
+                                np.ones((1,params['FPOINTS']))*p0_idx, 
                                 [self.delay_mm], [self.delay_ps],
+                                np.ones((1,params['FPOINTS']))*n0,
+                                np.ones((1,params['FPOINTS']))*p0,
+                                np.ones((1,params['FPOINTS']))*vb,
+                                np.ones((1,params['FPOINTS']))*vt,
                                 br_data,
                                 np.ones((1,params['FPOINTS']))*self.tempServer.tempD4,
                                 np.ones((1,params['FPOINTS']))*self.tempServer.tempD5
@@ -447,7 +454,8 @@ class Transient:
         # Sleep
         time.sleep(10)
 
-    def scan_transient_sweep(self,params):
+    def scan_transient_sweep(self, params, 
+                             n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0, vb = 0.0, vt = 0.0):
         '''
         description
 
@@ -459,10 +467,6 @@ class Transient:
         
         '''
         try:
-            # Setup DataVault file and Config file
-            self.log_message("Setting up datavault and config file...")
-            self.setup_datavault(params)
-            self.save_config(params)
 
             for i in range(params['SWEEPS']):
                 self.idx = i
@@ -488,13 +492,13 @@ class Transient:
                                                    [0.0],
                                                    [0.0],
                                                    6,
-                                                   params['SAMPLING']*params['LIA']['TIME_CONST']*1e6,
+                                                   params['SAMPLING']*params['LIA_THZ']['TIME_CONST']*1e6,
                                                    params['AVGS']))
                 # Clear DAC buffer
                 self.dac.stop_ramp()
 
                 if params['MEASURE_MODE'] == 'FAST':
-                    self.scan_transient_fast(params,i)
+                    self.scan_transient_fast(params,sweep_num=i,n0_idx=n0_idx,p0_idx=p0_idx,n0=n0,p0=p0,vb=vb,vt=vt)
                 else:
                     self.scan_transient(params)
                         
@@ -543,7 +547,7 @@ class Transient:
                 self.voltage_ramp_dac(self.dac, [v_gate_bot_ch], [v_gate_bot_last], [v_gate_bot_next])
                 
                 # Measure transient
-                self.scan_transient_sweep(params)
+                self.scan_transient_sweep(params,n0_idx=j,p0_idx=i,n0=0, p0=0,vb=v_gate_bot_next,vt=v_gate_top_next)
 
                 v_gate_bot_last = v_gate_bot_next
 
@@ -594,8 +598,8 @@ def main():
     # Lockin - THz
     lck1 = cxn.sr860()
     lck1.select_device(1)
-    lck1.time_constant(params['LIA']['TIME_CONST'])
-    lck1.sensitivity(params['LIA']['SENS'])
+    lck1.time_constant(params['LIA_THZ']['TIME_CONST'])
+    lck1.sensitivity(params['LIA_THZ']['SENS'])
     
     # Lockin - Transport
     lck2 = cxn.sr860()
@@ -637,19 +641,24 @@ def main():
     # Voltage ramp up on E SMU
     scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[0],[params['BIAS_E']])
 
+    # Setup DataVault file and Config file
+    scanTransient.log_message("Setting up datavault and config file...")
+    scanTransient.setup_datavault(params)
+    scanTransient.save_config(params)
+
     try:
         # Sweeps
         # scanTransient.scan_transient_sweep(params)
 
         # Gate
         scanTransient.scan_transient_gate2D(params)
-
-        # Kill Temperature serverp
-        tempServer.stop_thread = True
             
     except Exception as error:
         scanTransient.log_message("Safe exit in process. {}".format(error))
     
+    # Kill Temperature serverp
+    tempServer.stop_thread = True
+
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
     

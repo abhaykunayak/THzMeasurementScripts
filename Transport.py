@@ -99,9 +99,9 @@ class Transport(Thread):
         dv.add_parameter('p0_pnts', params['MEAS_PARAMS']['p0_PNTS'])
 
         dv.add_parameter('live_plots', (('n0', 'Lockin Transport X'), 
-                                        ('n0', 'Lockin THz X'), 
+                                        ('n0', 'Lockin THz Y'), 
                                         ('n0', 'p0', 'Lockin Transport X'), 
-                                        ('n0', 'p0', 'Lockin THz X')))
+                                        ('n0', 'p0', 'Lockin THz Y')))
         
         self.log_message('Data vault file: {}'.format(dv.get_name()))
 
@@ -237,6 +237,7 @@ class Transport(Thread):
         start_time = time.time()
 
         for i in np.arange(num_p0):
+            self.log_message("p0 sweep: {}/{}".format(i,num_p0))
             # Measure temperature
             try:
                 self.tempD4 = float(self.ls.read_temp('D4'))
@@ -375,9 +376,19 @@ def main():
     # DataVault File
     rt.setup_datavault(params, dv)
 
+    # Check for THz measurement
+    if params['MEASUREMENT'] == 'thz':
+        rt.log_message('Ramping up voltage on E switch for THz...')
+        rt.voltage_ramp_dac(dac,[0],[0.0],[params['BIASE']])
+
     # Measure
     rt.scan_gate(params)
     
+    # Check for THz measurement
+    if params['MEASUREMENT'] == 'thz':
+        rt.log_message('Ramping down voltage on E switch for THz...')
+        rt.voltage_ramp_dac(dac,[0],[params['BIASE']],[0.0])
+
     # Save config file
     rt.save_config(params)
 

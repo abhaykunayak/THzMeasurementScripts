@@ -2,7 +2,7 @@ ROOTDIR: 'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
 DATADIR: '2024_03_30_AKN_BLG_20'
 FILENAME: transport
 
-MEASUREMENT: 'transport' # options: 'transport' and 'thz'
+MEASUREMENT: 'thz' # options: 'transport' and 'thz'
 
 DEPENDENTS:
   - n0 idx
@@ -21,13 +21,14 @@ INDEPENDENTS:
 
 LIA_THZ:
   TIME_CONST: 0.1   # s
-  SENS: 100.0e-3    # V
+  SENS: 10.0e-3    # V
 
+BIASE: 10.0
 GAIN: 1.0e+8
 
 LIA_R:
   TIME_CONST: 0.1   # s
-  SENS: 100.0e-6    # V
+  SENS: 20.0e-6    # V
   FREQ: 117.777     # Hz
   AMPL: 10.0e-3     # V
 
@@ -36,7 +37,7 @@ IAC: 10.0e-9        # A
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
 DAC_CONV_TIME: 250
 SAMPLING: 0.1
-AVGS: 1
+AVGS: 100
 
 DAC_IN_CH:
   - 0           # Lockin THz X
@@ -50,7 +51,7 @@ DAC_OUT_CH:
 
 MEAS_PARAMS:
   n0_PNTS: 100
-  p0_PNTS: 5
+  p0_PNTS: 21
   n0_RANGE:     # fast axis
     - -1.0
     - 1.0
