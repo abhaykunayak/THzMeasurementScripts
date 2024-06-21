@@ -191,6 +191,7 @@ class Transport(Thread):
         vb : float
 
         '''
+        return p0, n0
         return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta)
     
     def mesh_n0p0(self, p0_range, n0_range, delta, pxsize):
@@ -259,7 +260,7 @@ class Transport(Thread):
             mask = np.logical_and(np.logical_and(vec_vt <= meas_params['MAX_vt'], 
                                             vec_vt >= meas_params['MIN_vt']),
                               np.logical_and(vec_vb <= meas_params['MAX_vb'], 
-                                            vec_vt >= meas_params['MIN_vb']))
+                                            vec_vb >= meas_params['MIN_vb']))
         
             if np.any(mask == True):
                 start, stop = np.where(mask == True)[0][0], np.where(mask == True)[0][-1]
@@ -275,7 +276,7 @@ class Transport(Thread):
                               [last_vt, last_vb], [vec_vt[start], vec_vb[start]])
                     
                 # measurement
-                time.sleep(params['LIA_R']['TIME_CONST']*3.0)
+                time.sleep(params['LIA_R']['TIME_CONST']*5.0)
                 br_data = np.array(self.dac.buffer_ramp(params['DAC_OUT_CH'],
                                                 params['DAC_IN_CH'],
                                                 [vec_vt[start], vec_vb[start]],
@@ -338,13 +339,13 @@ def main():
     
     # SR 860 Lockin THz
     lck_thz = cxn.sr860()
-    lck_thz.select_device(1)
+    lck_thz.select_device(params['LIA_THZ']['DEV'])
     lck_thz.time_constant(params['LIA_THZ']['TIME_CONST'])
     lck_thz.sensitivity(params['LIA_THZ']['SENS'])
 
     # SR 860 Lockin Transport 
-    lck_r = cxn.sr860()
-    lck_r.select_device(0)
+    lck_r = cxn.sr830()
+    lck_r.select_device(params['LIA_R']['DEV'])
     lck_r.sensitivity(params['LIA_R']['SENS'])
     lck_r.time_constant(params['LIA_R']['TIME_CONST'])
     lck_r.sine_out_amplitude(params['LIA_R']['AMPL'])

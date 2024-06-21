@@ -343,7 +343,8 @@ class Transient:
         vb : float
 
         '''
-        return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta)
+        return p0, n0
+        return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta) 
     
     def mesh_n0p0(self, p0_range, n0_range, delta, pxsize):
         """
@@ -473,7 +474,7 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-        br_data[2:4] = br_data[5:7]*params['LIA_R']['SENS']/10.0/params['IAC']
+        br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate((
                                 np.ones((1,params['FPOINTS']))*sweep_num,
@@ -639,7 +640,7 @@ class Transient:
             mask = np.logical_and(np.logical_and(vec_vt <= meas_params['MAX_vt'], 
                                             vec_vt >= meas_params['MIN_vt']),
                               np.logical_and(vec_vb <= meas_params['MAX_vb'], 
-                                            vec_vt >= meas_params['MIN_vb']))
+                                            vec_vb >= meas_params['MIN_vb']))
         
             if np.any(mask == True):
                 start, stop = np.where(mask == True)[0][0], np.where(mask == True)[0][-1]
@@ -715,13 +716,13 @@ def main():
     
     # Lockin - THz
     lck1 = cxn.sr860()
-    lck1.select_device(1)
+    lck1.select_device()
     lck1.time_constant(params['LIA_THZ']['TIME_CONST'])
     lck1.sensitivity(params['LIA_THZ']['SENS'])
     
     # Lockin - Transport
-    lck2 = cxn.sr860()
-    lck2.select_device(0)    
+    lck2 = cxn.sr830()
+    lck2.select_device()    
     lck2.time_constant(params['LIA_R']['TIME_CONST'])
     lck2.sensitivity(params['LIA_R']['SENS'])
     lck2.sine_out_amplitude(params['LIA_R']['AMPL'])

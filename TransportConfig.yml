@@ -1,5 +1,5 @@
 ROOTDIR: 'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
-DATADIR: '2024_03_30_AKN_BLG_20'
+DATADIR: '2024_06_19_AKN_BLG_25'
 FILENAME: transport
 
 MEASUREMENT: 'thz' # options: 'transport' and 'thz'
@@ -20,16 +20,18 @@ INDEPENDENTS:
   - Temp D5 [K]
 
 LIA_THZ:
-  TIME_CONST: 0.1   # s
+  DEV: 'desktop-marconi GPIB Bus - GPIB0::8::INSTR'
+  TIME_CONST: 0.3   # s
   SENS: 10.0e-3    # V
 
 BIASE: 10.0
 GAIN: 1.0e+8
 
 LIA_R:
-  TIME_CONST: 0.1   # s
-  SENS: 20.0e-6    # V
-  FREQ: 117.777     # Hz
+  DEV: 'desktop-marconi GPIB Bus - GPIB0::21::INSTR'
+  TIME_CONST: 0.3   # s
+  SENS: 100.0e-6    # V
+  FREQ: 87.777     # Hz
   AMPL: 10.0e-3     # V
 
 IAC: 10.0e-9        # A
@@ -51,7 +53,7 @@ DAC_OUT_CH:
 
 MEAS_PARAMS:
   n0_PNTS: 100
-  p0_PNTS: 21
+  p0_PNTS: 51
   n0_RANGE:     # fast axis
     - -1.0
     - 1.0
