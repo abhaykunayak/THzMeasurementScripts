@@ -178,9 +178,9 @@ def main():
         scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
         
         # Move stage to position
-        ds.move_absolute(1,i)
-        print("[{}] Moving stage to {} mm".format(scan_e.current_time(),i) )
-        time.sleep(5)
+        # ds.move_absolute(1,i)
+        # print("[{}] Moving stage to {} mm".format(scan_e.current_time(),i) )
+        # time.sleep(5)
 
         # Create new data file
         dv_e.new('E_'+params['FILENAME']+'_{} mm'.format(i), ['X Pos [V]', 'Y Pos [V]'], ['I Measure [A]'])

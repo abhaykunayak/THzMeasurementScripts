@@ -15,13 +15,15 @@ class Transport(Thread):
     def __init__(self,
                  params,
                  dac,
-                 ls):
+                 ls,
+                 ds):
         
         Thread.__init__(self)
         self.daemon = True
         self.params = params
         self.dac = dac
         self.ls = ls
+        self.ds = ds
         self.rootdir = params['ROOTDIR']
         self.datadir = params['DATADIR']
         self.datapath = self.rootdir+"\\"+self.datadir+".dir"
@@ -81,6 +83,7 @@ class Transport(Thread):
             latest_file_num = 1
         latest_file = max(files, key=os.path.getctime)
         latest_file_num = int(os.path.basename(latest_file)[0:5]) + 1
+        # latest_file_num = 55
         filename_log = '{:05d} - logfile.log'.format(latest_file_num)
         
         # Setup logging
@@ -191,7 +194,7 @@ class Transport(Thread):
         vb : float
 
         '''
-        return p0, n0
+        # return p0, n0
         return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta)
     
     def mesh_n0p0(self, p0_range, n0_range, delta, pxsize):
@@ -220,7 +223,28 @@ class Transport(Thread):
 
         return np.dstack((v_fast, v_slow)), np.dstack((p0, n0))
 
-    
+    def setup_delay(self,params):
+        '''
+        Setup delay stage 
+
+        Parameters
+        ----------
+        delay_range : float
+            range of the delay stage
+
+        Returns
+        -------
+        vt : float
+        vb : float
+
+        '''
+        self.log_message("Initializing delay stage...")
+        self.ds.gpib_write("1VA1.0")
+        self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE'][0]))
+        self.ds.gpib_write("1WS1000")
+        time.sleep(3)
+
+
     def scan_gate(self,params):
         meas_params = params['MEAS_PARAMS']
 
@@ -234,82 +258,95 @@ class Transport(Thread):
                 n0_range = (extent[0], extent[1]), delta = meas_params['DELTA'],
                 pxsize = pxsize)
 
+        delay_points = params['DELAY_POINTS']
+        delay_range = np.linspace(params['DELAY_RANGE'][0],
+                                  params['DELAY_RANGE'][1],
+                                  delay_points)
+    
         self.log_message("Starting transport measurement...")
         start_time = time.time()
 
-        for i in np.arange(num_p0):
-            self.log_message("p0 sweep: {}/{}".format(i,num_p0))
-            # Measure temperature
-            try:
-                self.tempD4 = float(self.ls.read_temp('D4'))
-                self.tempD5 = float(self.ls.read_temp('D5'))
-            except:
-                self.log_message("Error in reading temperature")
+        for k in np.arange(delay_points):
+            self.log_message("Moving stage to {} mm".format(delay_range[k]))
+            self.ds.move_absolute(1,delay_range[k])
+            time.sleep(1)
 
-            # Empty variable for buffer ramp data
-            br_data_full = np.zeros((np.size(params['DAC_IN_CH']),num_n0),dtype=float)
-            
-            # Extract real voltages for vt and vb
-            vec_vt = mesh_vtvb[i, :][:, 0]
-            vec_vb = mesh_vtvb[i, :][:, 1]
+            for i in np.arange(num_p0):
+                self.log_message("p0 sweep: {}/{}".format(i,num_p0))
+                # Measure temperature
+                try:
+                    self.tempD4 = float(self.ls.read_temp('D4'))
+                    self.tempD5 = float(self.ls.read_temp('D5'))
+                except:
+                    self.log_message("Error in reading temperature")
 
-            mesh_p0 = mesh_p0n0[i, :][:, 0]
-            mesh_n0 = mesh_p0n0[i, :][:, 1]
-
-            # Check voltage limits
-            mask = np.logical_and(np.logical_and(vec_vt <= meas_params['MAX_vt'], 
-                                            vec_vt >= meas_params['MIN_vt']),
-                              np.logical_and(vec_vb <= meas_params['MAX_vb'], 
-                                            vec_vb >= meas_params['MIN_vb']))
-        
-            if np.any(mask == True):
-                start, stop = np.where(mask == True)[0][0], np.where(mask == True)[0][-1]
-                num_points = stop - start + 1
-
-                if i == 0:
-                    self.log_message('Ramping up to starting gate voltages...')
-                    self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
-                              [0.0, 0.0], [vec_vt[start], vec_vb[start]])
-                else:
-                    self.log_message('Ramping gate voltages for next line...')
-                    self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
-                              [last_vt, last_vb], [vec_vt[start], vec_vb[start]])
-                    
-                # measurement
-                time.sleep(params['LIA_R']['TIME_CONST']*5.0)
-                br_data = np.array(self.dac.buffer_ramp(params['DAC_OUT_CH'],
-                                                params['DAC_IN_CH'],
-                                                [vec_vt[start], vec_vb[start]],
-                                                [vec_vt[stop], vec_vb[stop]],
-                                                num_points,
-                                                params['SAMPLING']*params['LIA_R']['TIME_CONST']*1e6,
-                                                params['AVGS']))
-
-                # Lock-in data
-                # THz data
-                br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                # Transport data
-                br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
-
-                br_data_full[:,start:stop + 1] = br_data
-                n0_idx = np.ones(num_n0) * i
-                p0_idx = np.linspace(0, num_n0 - 1, num_n0)
-                tempD4 = np.ones(num_n0) * self.tempD4
-                tempD5 = np.ones(num_n0) * self.tempD5
+                # Empty variable for buffer ramp data
+                br_data_full = np.zeros((np.size(params['DAC_IN_CH']),num_n0),dtype=float)
                 
-                # Format data for data vault
-                data = np.concatenate((
-                            [n0_idx], [p0_idx],
-                            [mesh_n0], [mesh_p0],
-                            [vec_vb], [vec_vt],
-                            br_data_full,
-                            [tempD4], [tempD5]
-                            ),axis=0).T
+                # Extract real voltages for vt and vb
+                vec_vt = mesh_vtvb[i, :][:, 0]
+                vec_vb = mesh_vtvb[i, :][:, 1]
 
-                self.dv.add(data)
+                mesh_p0 = mesh_p0n0[i, :][:, 0]
+                mesh_n0 = mesh_p0n0[i, :][:, 1]
 
-                last_vt = vec_vt[stop]
-                last_vb = vec_vb[stop]
+                # Check voltage limits
+                mask = np.logical_and(np.logical_and(vec_vt <= meas_params['MAX_vt'], 
+                                                vec_vt >= meas_params['MIN_vt']),
+                                np.logical_and(vec_vb <= meas_params['MAX_vb'], 
+                                                vec_vb >= meas_params['MIN_vb']))
+            
+                if np.any(mask == True):
+                    start, stop = np.where(mask == True)[0][0], np.where(mask == True)[0][-1]
+                    num_points = stop - start + 1
+
+                    if i == 0:
+                        self.log_message('Ramping up to starting gate voltages...')
+                        self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                                [0.0, 0.0], [vec_vt[start], vec_vb[start]])
+                    else:
+                        self.log_message('Ramping gate voltages for next line...')
+                        self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
+                                [last_vt, last_vb], [vec_vt[start], vec_vb[start]])
+                        
+                    # measurement
+                    time.sleep(params['LIA_R']['TIME_CONST']*5.0)
+                    br_data = np.array(self.dac.buffer_ramp(params['DAC_OUT_CH'],
+                                                    params['DAC_IN_CH'],
+                                                    [vec_vt[start], vec_vb[start]],
+                                                    [vec_vt[stop], vec_vb[stop]],
+                                                    num_points,
+                                                    params['SAMPLING']*params['LIA_R']['TIME_CONST']*1e6,
+                                                    params['AVGS']))
+
+                    # Lock-in data
+                    # THz data
+                    br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                    # Transport data
+                    br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
+
+                    br_data_full[:,start:stop + 1] = br_data
+                    n0_idx = np.ones(num_n0) * i
+                    p0_idx = np.linspace(0, num_n0 - 1, num_n0)
+                    pos_idx = np.ones(num_n0) * k
+                    current_pos = np.ones(num_n0) * delay_range[k]
+                    tempD4 = np.ones(num_n0) * self.tempD4
+                    tempD5 = np.ones(num_n0) * self.tempD5
+                    
+                    # Format data for data vault
+                    data = np.concatenate((
+                                [n0_idx], [p0_idx], [pos_idx],
+                                [mesh_n0], [mesh_p0],
+                                [vec_vb], [vec_vt],
+                                [current_pos],
+                                br_data_full,
+                                [tempD4], [tempD5]
+                                ),axis=0).T
+
+                    self.dv.add(data)
+
+                    last_vt = vec_vt[stop]
+                    last_vb = vec_vb[stop]
 
         # Ramp down all gate voltages
         self.log_message('Ramping down gate voltages...')
@@ -362,6 +399,10 @@ def main():
     ls350 = cxn.lakeshore_350()
     ls350.select_device()
 
+    # Delay stage
+    ds = cxn.esp300()
+    ds.select_device()
+
     # Data vault
     dv = cxn.data_vault()
     
@@ -369,7 +410,7 @@ def main():
     dv.cd(params['DATADIR'])
     
     # Transport class instance
-    rt = Transport(params, dac, ls350)
+    rt = Transport(params, dac, ls350, ds)
     
     # Setup log file
     rt.setup_logfile(params)        
@@ -381,6 +422,9 @@ def main():
     if params['MEASUREMENT'] == 'thz':
         rt.log_message('Ramping up voltage on E switch for THz...')
         rt.voltage_ramp_dac(dac,[0],[0.0],[params['BIASE']])
+
+        # Setup delay stage
+        rt.setup_delay(params)
 
     # Measure
     rt.scan_gate(params)

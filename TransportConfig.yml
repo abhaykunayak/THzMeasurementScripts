@@ -1,35 +1,46 @@
 ROOTDIR: 'C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data'
-DATADIR: '2024_06_19_AKN_BLG_25'
+DATADIR: '2024_07_11_AKN_BLG_33'
 FILENAME: transport
 
 MEASUREMENT: 'thz' # options: 'transport' and 'thz'
 
 DEPENDENTS:
   - n0 idx
-  - p0 idx 
+  - p0 idx
+  - pos_idx 
   - n0
   - p0
   - vb
   - vt
+  - pos
 INDEPENDENTS:
   - Lockin THz X [A]
   - Lockin THz Y [A]
   - Lockin Transport X [V]
   - Lockin Transport Y [V]
+  - Input 4
+  - Input 5
+  - Input 6
+  - Input 7
   - Temp D4 [K]
   - Temp D5 [K]
 
 LIA_THZ:
   DEV: 'desktop-marconi GPIB Bus - GPIB0::8::INSTR'
-  TIME_CONST: 0.3   # s
+  TIME_CONST: 0.1   # s
   SENS: 10.0e-3    # V
 
 BIASE: 10.0
 GAIN: 1.0e+8
 
+DELAY_RANGE:
+- 29.0
+- 33.0
+DELAY_POINTS: 40
+
 LIA_R:
   DEV: 'desktop-marconi GPIB Bus - GPIB0::21::INSTR'
-  TIME_CONST: 0.3   # s
+  TIME_CONST: 0.1   # s
   SENS: 100.0e-6    # V
   FREQ: 87.777     # Hz
   AMPL: 10.0e-3     # V
@@ -39,13 +50,17 @@ IAC: 10.0e-9        # A
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)
 DAC_CONV_TIME: 250
 SAMPLING: 0.1
-AVGS: 100
+AVGS: 10
 
 DAC_IN_CH:
   - 0           # Lockin THz X
   - 1           # Lockin THz Y
   - 2           # Lockin Transport X
   - 3           # Lockin Transport Y
+  - 4
+  - 5
+  - 6
+  - 7
 
 DAC_OUT_CH:
   - 1           # top gate 
@@ -58,11 +73,11 @@ MEAS_PARAMS:
     - -1.0
     - 1.0
   p0_RANGE:     # slow axis
-    - -1.0
-    - 1.0
-  DELTA: -0.607   # gate asymmetry
+    - -5.0
+    - 3.0
+  DELTA: 0.2   # gate asymmetry
 
-  MAX_vb: 2.0
-  MAX_vt: 2.0   # 
-  MIN_vb: -2.0
+  MAX_vb: 4.0
+  MAX_vt: 1.0   # 
+  MIN_vb: -4.0
   MIN_vt: -2.0  # 

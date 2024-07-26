@@ -113,6 +113,7 @@ class Transient:
             latest_file_num = 1
         latest_file = max(files, key=os.path.getctime)
         latest_file_num = int(os.path.basename(latest_file)[0:5]) + 1
+        # latest_file_num = 18
         filename_log = '{:05d} - logfile.log'.format(latest_file_num)
         
         # Setup logging
@@ -344,7 +345,7 @@ class Transient:
 
         '''
         return p0, n0
-        return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta) 
+        # return (0.5 * (n0 + p0) / (1.0 + c_delta)), 0.5 * (n0 - p0) / (1.0 - c_delta) 
     
     def mesh_n0p0(self, p0_range, n0_range, delta, pxsize):
         """
@@ -417,7 +418,7 @@ class Transient:
                 try:
                     self.ds.gpib_write("1PA{:.6f}".format(self.delay_mm[i]))
                     self.ds.gpib_write("1WS")
-                    time.sleep(params['LIA_THZ']['TIME_CONST']*5)
+                    time.sleep(5)
                     # delay_pos = float(self.ds.gpib_query("1TP?"))
                 except:
                     self.log_message("Stage movement error.")
@@ -494,7 +495,7 @@ class Transient:
             
         # Start moving stage
         self.log_message("Moving to start position...")
-        self.ds.gpib_write("1VA{:.6f}".format(1))
+        self.ds.gpib_write("1VA{:.6f}".format(5))
         self.ds.move_absolute(1,params['DELAY_RANGE_MM'][0])
         
         # Sleep
@@ -662,7 +663,7 @@ class Transient:
                     self.voltage_ramp_dac(self.dac, params['DAC_OUT_CH'], 
                             [vec_vt[start], vec_vb[start]], [vec_vt[start+j], vec_vb[start+j]])
 
-                    # THa measurement
+                    # THz measurement
                     self.scan_transient_sweep(params,n0_idx=j,p0_idx=i,n0=mesh_n0[start+j], p0=mesh_p0[start+j],vb=vec_vb[start+j],vt=vec_vt[start+j])
 
                 last_vt = vec_vt[stop]
@@ -767,10 +768,10 @@ def main():
 
     try:
         # Sweeps
-        # scanTransient.scan_transient_sweep(params)
+        scanTransient.scan_transient_sweep(params)
 
         # Gate
-        scanTransient.scan_transient_gate2D_n0p0(params)
+        # scanTransient.scan_transient_gate2D_n0p0(params)
             
     except Exception as error:
         scanTransient.log_message("Safe exit in process. {}".format(error))

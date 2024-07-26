@@ -1,13 +1,13 @@
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: '2024_06_19_AKN_BLG_25'
+DATADIR: '2024_07_11_AKN_BLG_33'
 FILENAME: MScanSMU
   
 EY_CENTER: -0.5990         #DAC1 refl: -0.4510; trans: -0.35
 EX_CENTER: 5.2160         #DAC0 refl: 5.8450; trans: 6.25 # 5.9750 
-AY_CENTER: 0.8690         #DAC3 (old: 0.5210)
-AX_CENTER: 0.6750         #DAC2 (old: 1.3215)
-RANGE: 0.01               # usual: 0.2
-STEP: 0.001               # usual: 0.01
+AY_CENTER: 0.8740        #DAC3 (old: 0.8700)
+AX_CENTER: 0.6940        #DAC2 (old: 0.7350)
+RANGE: 0.02               # usual: 0.2
+STEP: 0.002               # usual: 0.01
 
 DAC_DATA: DAC-ADC_AD7734-AD5791 (COM5)         # DAC for signal
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)   # DAC for mirrors
