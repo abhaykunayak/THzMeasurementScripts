@@ -99,13 +99,13 @@ class Scan(Thread):
             percent = (x_rng[i] - np.min(x_rng))/(np.max(x_rng) - np.min(x_rng))
             print("[{}] Scanning {} {:.2f} % complete".format(
                 self.current_time(),self.spot,100*percent))
-        
-            # scan in Y    
+
+            # scan in Y
             for j in range(len(y_rng)):
                 self.dac.set_voltage(self.dac_ch_y, y_rng[j])
                 currentRead[i][j] = self.smu.read_i()
                 self.save_to_datavault(x_rng[i], y_rng[j], currentRead[i][j])
-                
+
         self.save_to_mat(x_rng,y_rng,currentRead)
         currentRead = gaussian_filter(currentRead, sigma=1)
         self.max_I = np.max(currentRead)

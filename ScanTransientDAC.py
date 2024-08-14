@@ -290,7 +290,6 @@ class Transient:
         if not stage_in_pos:
             self.log_message("Stage not in position.")      
         
-
     def save_to_datavault(self,dmm,dps,in1,in2,in3,in4,delay_pos):
         '''
         description
