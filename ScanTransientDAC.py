@@ -162,7 +162,6 @@ class Transient:
         total_time = br_end-br_start
         self.log_message("Finished reading buffer in {:.6f}s.".format(total_time))
         
-        
     def setup_datavault(self,params):
         '''
         description
@@ -396,7 +395,9 @@ class Transient:
         # Wait to finish scan
         scan.join()
 
-    def scan_transient(self,params):
+    def scan_transient(self,params, sweep_num = 0,
+                       n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0,
+                       vb = 0.0, vt = 0.0):
         '''
         description
 
@@ -417,8 +418,7 @@ class Transient:
                 try:
                     self.ds.gpib_write("1PA{:.6f}".format(self.delay_mm[i]))
                     self.ds.gpib_write("1WS")
-                    time.sleep(5)
-                    # delay_pos = float(self.ds.gpib_query("1TP?"))
+                    time.sleep(3)
                 except:
                     self.log_message("Stage movement error.")
                 
@@ -427,20 +427,35 @@ class Transient:
                                                    params['DAC_INPUT_CH'],
                                                    [0.0],
                                                    [0.0],
-                                                   1,
+                                                   params['SFPOINTS'],
                                                    params['SAMPLING']*params['LIA_THZ']['TIME_CONST']*1e6,
-                                                   params['AVGS']))
+                                                   params['AVGS']),dtype=np.float64)
 
-                in1 = br_data[0][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                in2 = br_data[1][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                in3 = br_data[2][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                in4 = br_data[3][0]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                # Save data tp Data Vault
+                br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
+                br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
+                br_data[4:6] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
                 
-                self.save_to_datavault(self.delay_mm[i], self.delay_ps[i], 
-                                       in1, in2, in3, in4, delay_pos=0)
-    
+                dv_data = np.concatenate((
+                                np.ones((1,params['SFPOINTS']))*sweep_num,
+                                np.ones((1,params['SFPOINTS']))*n0_idx,
+                                np.ones((1,params['SFPOINTS']))*p0_idx, 
+                                np.ones((1,params['SFPOINTS']))*self.delay_mm[i],
+                                np.ones((1,params['SFPOINTS']))*self.delay_ps[i],
+                                np.ones((1,params['SFPOINTS']))*n0,
+                                np.ones((1,params['SFPOINTS']))*p0,
+                                np.ones((1,params['SFPOINTS']))*vb,
+                                np.ones((1,params['SFPOINTS']))*vt,
+                                br_data,
+                                np.ones((1,params['SFPOINTS']))*self.tempServer.tempD4,
+                                np.ones((1,params['SFPOINTS']))*self.tempServer.tempD5
+                                ),axis=0).T
+                
+                self.dv.add(dv_data)
+
     def scan_transient_fast(self, params, sweep_num = 0, 
-                            n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0, vb = 0.0, vt = 0.0):
+                            n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0,
+                            vb = 0.0, vt = 0.0):
         '''
         description
 
@@ -546,7 +561,7 @@ class Transient:
                 if params['MEASURE_MODE'] == 'FAST':
                     self.scan_transient_fast(params,sweep_num=i,n0_idx=n0_idx,p0_idx=p0_idx,n0=n0,p0=p0,vb=vb,vt=vt)
                 else:
-                    self.scan_transient(params)
+                    self.scan_transient(params,sweep_num=i,n0_idx=n0_idx,p0_idx=p0_idx,n0=n0,p0=p0,vb=vb,vt=vt)
                         
         except KeyboardInterrupt:
             self.log_message("Sweep measurement interrupted.")
@@ -699,6 +714,7 @@ def main():
     # DAC - lockin
     dac = cxn.dac_adc
     dac.select_device(params['DAC_DATA'])
+    dac.stop_ramp()
     dac.initialize()
     for i in range(4):
         dac.set_conversiontime(i,params['DAC_CONV_TIME'])
