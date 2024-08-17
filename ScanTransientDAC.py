@@ -489,7 +489,8 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-        br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
+        br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0
+        br_data[4:6] = br_data[4:6]*params['LIA_R']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate((
                                 np.ones((1,params['FPOINTS']))*sweep_num,
@@ -732,13 +733,21 @@ def main():
     
     # Lockin - THz
     lck1 = cxn.sr860()
-    lck1.select_device()
+    lck1.select_device(params['LIA_THZ']['DEV'])
     lck1.time_constant(params['LIA_THZ']['TIME_CONST'])
     lck1.sensitivity(params['LIA_THZ']['SENS'])
+
+    # Lockin - THz - shaker
+    lck3 = cxn.sr860()
+    lck3.select_device(params['LIA_THZ2']['DEV'])
+    lck3.time_constant(params['LIA_THZ2']['TIME_CONST'])
+    lck3.sensitivity(params['LIA_THZ2']['SENS'])
+    lck3.sine_out_amplitude(params['LIA_THZ2']['AMPL'])
+    lck3.frequency(params['LIA_THZ2']['FREQ'])
     
     # Lockin - Transport
     lck2 = cxn.sr830()
-    lck2.select_device()    
+    lck2.select_device(params['LIA_R']['DEV'])    
     lck2.time_constant(params['LIA_R']['TIME_CONST'])
     lck2.sensitivity(params['LIA_R']['SENS'])
     lck2.sine_out_amplitude(params['LIA_R']['AMPL'])

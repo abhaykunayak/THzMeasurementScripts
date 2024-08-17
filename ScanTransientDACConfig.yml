@@ -24,10 +24,10 @@ INDEPENDENTS:
 - Temp A [K]
 - Temp B [K]
 
-MEASURE_MODE: SLOW # FAST or SLOW
+MEASURE_MODE: FAST # FAST or SLOW
 DELAY_RANGE_MM:
-- 33.3                # Full: 60.5; Sample: X
-- 34.3                 # Full: 70.5; Sample: X
+- 36.6                # Full: 60.5; Sample: X With piezo change to 30-35
+- 37.9                 # Full: 70.5; Sample: X
 DELAY_TRAVEL: 10
 DELAY_POINTS: 101
 DELAY_POS_THZ: 25.26  # peak THz signal
@@ -37,6 +37,13 @@ LIA_THZ:
   DEV: desktop-marconi GPIB Bus - GPIB0::8::INSTR
   TIME_CONST: 0.1
   SENS: 50.0e-3
+
+LIA_THZ2:
+  DEV: desktop-marconi GPIB Bus - GPIB0::7::INSTR
+  TIME_CONST: 0.1
+  SENS: 2.0e-3
+  AMPL: 200.0e-3
+  FREQ: 37.7777
 
 LIA_R:
   DEV: desktop-marconi GPIB Bus - GPIB0::21::INSTR
