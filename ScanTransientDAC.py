@@ -433,7 +433,7 @@ class Transient:
 
                 # Save data tp Data Vault
                 br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                br_data[2:4] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
+                br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0
                 br_data[4:6] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
                 
                 dv_data = np.concatenate((
@@ -746,7 +746,7 @@ def main():
     lck3.frequency(params['LIA_THZ2']['FREQ'])
     
     # Lockin - Transport
-    lck2 = cxn.sr830()
+    lck2 = cxn.sr860()
     lck2.select_device(params['LIA_R']['DEV'])    
     lck2.time_constant(params['LIA_R']['TIME_CONST'])
     lck2.sensitivity(params['LIA_R']['SENS'])
@@ -808,6 +808,9 @@ def main():
     
     # Voltage ramp down
     scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[params['BIAS_E']],[0])
+
+    # Turn off Piezo
+    lck3.sine_out_amplitude(0)
 
     # save data in mat format
     scanTransient.save_to_mat()
