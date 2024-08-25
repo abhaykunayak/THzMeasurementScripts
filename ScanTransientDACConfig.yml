@@ -27,7 +27,7 @@ INDEPENDENTS:
 MEASURE_MODE: FAST # FAST or SLOW
 DELAY_RANGE_MM:
 - 36.6                # Full: 60.5; Sample: X With piezo change to 30-35
-- 46.6                 # Full: 70.5; Sample: X
+- 38.6                 # Full: 70.5; Sample: X
 DELAY_TRAVEL: 10
 DELAY_POINTS: 101
 DELAY_POS_THZ: 25.26  # peak THz signal
@@ -52,7 +52,7 @@ LIA_R:
   AMPL: 00.0e-3
   FREQ: 87.7777
 
-SWEEPS: 5
+SWEEPS: 1
 AVGS: 10
 FPOINTS: 2000
 SFPOINTS: 1

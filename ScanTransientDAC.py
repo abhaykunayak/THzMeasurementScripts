@@ -433,8 +433,8 @@ class Transient:
 
                 # Save data tp Data Vault
                 br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-                br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0
-                br_data[4:6] = br_data[2:4]*params['LIA_R']['SENS']/10.0/params['IAC']
+                br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0/params['GAIN']
+                br_data[4:6] = br_data[4:6]*params['LIA_R']['SENS']/10.0/params['IAC']
                 
                 dv_data = np.concatenate((
                                 np.ones((1,params['SFPOINTS']))*sweep_num,
@@ -489,7 +489,7 @@ class Transient:
         
         # Save data tp Data Vault
         br_data[0:2] = br_data[0:2]*params['LIA_THZ']['SENS']/10.0/params['GAIN']
-        br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0
+        br_data[2:4] = br_data[2:4]*params['LIA_THZ2']['SENS']/10.0/params['GAIN']
         br_data[4:6] = br_data[4:6]*params['LIA_R']['SENS']/10.0/params['IAC']
         
         dv_data = np.concatenate((
