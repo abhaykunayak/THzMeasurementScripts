@@ -1,5 +1,5 @@
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: '2024_08_20_AKNDB32_2B'
+DATADIR: '2024_08_30_AKN_DB32_2E'
 FILENAME: transient
 
 DEPENDENTS:
@@ -27,7 +27,7 @@ INDEPENDENTS:
 MEASURE_MODE: FAST # FAST or SLOW
 DELAY_RANGE_MM:
 - 36.6                # Full: 60.5; Sample: X With piezo change to 30-35
-- 38.6                 # Full: 70.5; Sample: X
+- 46.6                 # Full: 70.5; Sample: X
 DELAY_TRAVEL: 10
 DELAY_POINTS: 101
 DELAY_POS_THZ: 25.26  # peak THz signal
@@ -36,12 +36,12 @@ DAC_TIME: 135.0         # 135s for 2000 pts
 LIA_THZ:
   DEV: desktop-marconi GPIB Bus - GPIB0::8::INSTR
   TIME_CONST: 0.1
-  SENS: 20.0e-3
+  SENS: 200.0e-3
 
 LIA_THZ2:
   DEV: desktop-marconi GPIB Bus - GPIB0::7::INSTR
   TIME_CONST: 0.1
-  SENS: 1.0e-3
+  SENS: 10.0e-3
   AMPL: 150.0e-3
   FREQ: 37.7777
 

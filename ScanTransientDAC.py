@@ -111,9 +111,10 @@ class Transient:
         files = glob.glob(fullpath+'\*.hdf5')
         if files == []:
             latest_file_num = 1
-        latest_file = max(files, key=os.path.getctime)
-        latest_file_num = int(os.path.basename(latest_file)[0:5]) + 1
-        # latest_file_num = 18
+        else:
+            latest_file = max(files, key=os.path.getctime)
+            latest_file_num = int(os.path.basename(latest_file)[0:5]) + 1
+        # latest_file_num = 1
         filename_log = '{:05d} - logfile.log'.format(latest_file_num)
         
         # Setup logging
