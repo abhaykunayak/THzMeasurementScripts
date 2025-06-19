@@ -1,5 +1,5 @@
 ROOTDIR: C:\Users\Marconi\Young Lab Dropbox\Young Group\THz\Raw Data
-DATADIR: '2024_08_30_AKN_DB32_2E'
+DATADIR: '2025_06_18_ISBLG14'
 FILENAME: transient
 
 DEPENDENTS:
@@ -26,41 +26,42 @@ INDEPENDENTS:
 
 MEASURE_MODE: FAST # FAST or SLOW
 DELAY_RANGE_MM:
-- 36.6                # Full: 60.5; Sample: X With piezo change to 30-35
-- 46.6                 # Full: 70.5; Sample: X
+- 7       #36.6 with ESP300         # Full: 60.5; Sample: X With piezo change to 30-35
+- 15       #38.6 with ESP300        # Full: 70.5; Sample: X
 DELAY_TRAVEL: 10
 DELAY_POINTS: 101
 DELAY_POS_THZ: 25.26  # peak THz signal
-DAC_TIME: 135.0         # 135s for 2000 pts
+DAC_TIME: 67         # 135s for 2000 pts
 
 LIA_THZ:
   DEV: desktop-marconi GPIB Bus - GPIB0::8::INSTR
   TIME_CONST: 0.1
-  SENS: 200.0e-3
+  SENS: 500.0e-3
+  AMPL: 000e-6
 
 LIA_THZ2:
   DEV: desktop-marconi GPIB Bus - GPIB0::7::INSTR
   TIME_CONST: 0.1
-  SENS: 10.0e-3
-  AMPL: 150.0e-3
-  FREQ: 37.7777
+  SENS: 1000.0e-3
+  AMPL: 00.0e-3
+  FREQ: 17.7777   
 
 LIA_R:
-  DEV: desktop-marconi GPIB Bus - GPIB0::4::INSTR
+  DEV: desktop-marconi GPIB Bus - GPIB0::21::INSTR #Use GPIB::4:: when back to sr860
   TIME_CONST: 0.1
   SENS: 100.0e-3
   AMPL: 00.0e-3
-  FREQ: 87.7777
+  FREQ: 17.7777
 
 SWEEPS: 1
 AVGS: 10
-FPOINTS: 2000
+FPOINTS: 1000
 SFPOINTS: 1
 SAMPLING: 0.5
 READINGS: 1
 
 MEAS_PARAMS:
-  n0_PNTS: 1
+  n0_PNTS: 2
   p0_PNTS: 1
   n0_RANGE:     # fast axis
     - 0.0
@@ -68,12 +69,12 @@ MEAS_PARAMS:
   p0_RANGE:     # slow axis
     - -0.0
     - -0.0
-  DELTA: 0.2   # gate asymmetry
+  DELTA: 0.0    # gate asymmetry
 
-  MAX_vb: 4.0
-  MAX_vt: 2.0   # 
-  MIN_vb: -4.0
-  MIN_vt: -2.1  # 
+  MAX_vb: 1.0
+  MAX_vt: 1.0   
+  MIN_vb: -1.0
+  MIN_vt: -1.0   
 
 V_GATE_TOP_CH: 1    # slow axis
 V_GATE_TOP_PNTS: 1
@@ -81,15 +82,15 @@ V_GATE_TOP_RNG:
   - -0.0
   - 0.0
 
-V_GATE_BOT_CH: 2    # fast axis
-V_GATE_BOT_PNTS: 5  
+V_GATE_BOT_CH: 1    # fast axis
+V_GATE_BOT_PNTS: 1  
 V_GATE_BOT_RNG:
-  - -1.0
-  - 1.0
+  - -0.0
+  - 0.0
 
-T_INITIAL: 95.0
-T_FINAL: 120.0
-T_STEPS: 5
+T_INITIAL: 10.0
+T_FINAL: 10.0
+T_STEPS: 1
 
 GAIN: 100000000.0
 BIAS_E: 10.0
@@ -102,7 +103,7 @@ MAX_I_AB: 0
 MIRROR_SCAN: 0
 MSWEEPS: 1
 MAVGS: 1
-STAGE_POS: 21.774 # 21.7; 22.55; 25.0
+STAGE_POS: 13.78 # 21.7; 22.55; 25.0 
 E:
   X_CENTER: 5.2140
   Y_CENTER: -0.6300
@@ -126,15 +127,22 @@ DAC_OUT_CH:
   - 2                   # bottom gate
 DAC_OUTPUT_CH_DUMMY:
   - 3
+
+DAC_OUTPUT_CH_DUMMY_V: 
+- 0.0   # start volt
+- 0.0   # end volt  
+# note that these values above 
+# need to be touching the left bar, no spaces before them
+
 DAC_INPUT_CH:
   - 0         # THz LX
   - 1         # THz LY
   - 2         # Transport LX 
   - 3         # Transport LY
-  - 4         #
-  - 5         #
-  - 6         # Optical Encoder
-  - 7         # Stage flag
+  - 4         # Cap LX
+  - 5         # Cap LY
+  - 6         # 
+  - 7         # 
 DAC_MIRROR: DAC-ADC_AD7734-AD5791_4x4 (COM3)
 DAC_M_CH:
   - 0         # X - E

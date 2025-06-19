@@ -159,8 +159,8 @@ def main():
     smu2450.gpib_write(':SENSe:AVERage {}'.format(params['FILT']))
     
     # Delay stage
-    ds = cxn_e.esp300()
-    ds.select_device()
+    ds = cxn_e.esp302server()
+    # ds.select_device() Not necessary for esp 302. 
 
     # Data vault
     dv_e = cxn_e.data_vault()
@@ -178,7 +178,7 @@ def main():
         scan_a = Scan(params,'A',smu2450,dac_a,2,3,True)
         
         # Move stage to position
-        # ds.move_absolute(1,i)
+        # ds.move_axis(1,i)
         # print("[{}] Moving stage to {} mm".format(scan_e.current_time(),i) )
         # time.sleep(5)
 

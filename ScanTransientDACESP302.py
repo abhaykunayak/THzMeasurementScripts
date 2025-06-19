@@ -249,14 +249,24 @@ class Transient:
         '''
         # Delay stage settings
         self.log_message("Setting up the delay stage...")
-        self.ds.gpib_write("1MO1")
-        self.ds.gpib_write("1VA1.0")
-        self.ds.gpib_write("1AC0.1")
-        self.ds.gpib_write("1AG0.1")
-        self.ds.gpib_write("1BM9,1")
-        self.ds.gpib_write("1BN1")
-        self.ds.gpib_write("BO 2H")
-        
+
+        '''
+        self.ds.gpib_write("1MO1") Motor on
+        self.ds.gpib_write("1VA1.0") Velocity 1.0mm/s
+        self.ds.gpib_write("1AC0.1") Acceleration  0.1
+        self.ds.gpib_write("1AG0.1") Deceleration 0.1
+        self.ds.gpib_write("1BM9,1") Assign DIO bits to notify motion status
+        self.ds.gpib_write("1BN1") Enable DIO bits
+        self.ds.gpib_write("BO 2H") Set DIO port A,B direction
+        '''
+        self.ds.motor_on(1)
+        self.ds.set_velocity(1,1.0)
+        self.ds.set_acceleration(1,1)
+        self.ds.set_deceleration(1,1)
+        self.ds.assign_dio_bits_motion_status(1,9,1)
+        self.ds.enable_dio_bits_motion_status(1,True)
+        self.ds.set_dio_port_direction("2H") #all of this is esp302 version
+
     def init_stage_position(self,params):
         '''
         description
@@ -270,23 +280,45 @@ class Transient:
         '''
         # Move stage to starting position
         self.log_message("Moving stage to starting position...")
+
+        '''
         self.ds.gpib_write("1VA1.0")
         self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][0]))
         self.ds.gpib_write("1WS1000")
-        time.sleep(10)
+        '''
 
+        self.ds.set_velocity(1,5.0)
+
+        self.ds.move_axis(1,params["DELAY_RANGE_MM"][0])
+        #self.ds.wait_stop(1,100)
+
+        #Wait for stop here for 100ms
         # Check if stage in position
         stage_in_pos = False
-        for i in range(10):
+        # for i in range(10):  
+        #     time.sleep(1)
+        #     stage_motion = self.dac.read_voltage(7)
+        #     if stage_motion>3.0:
+        #         self.log_message("Stage in position.")
+        #         stage_in_pos = True
+        #         break
+        #     else:
+        #         self.log_message("Waiting for stage position...")
+        #         if i == 9:
+        #             self.log_message("Moving stage timeout.")
+        
+        for i in range(20):
             time.sleep(1)
-            stage_motion = self.dac.read_voltage(7)
-            if stage_motion>3.0:
+            
+            stageposition = self.ds.get_position(1)
+
+            if np.abs(stageposition-params["DELAY_RANGE_MM"][0]) <= 0.001:
                 self.log_message("Stage in position.")
                 stage_in_pos = True
                 break
             else:
-                self.log_message("Waiting for stage position...")
-                if i == 9:
+                self.log_message("Waiting for stage position... At: %1.1f"%stageposition)
+                if i >= 19:
                     self.log_message("Moving stage timeout.")
 
         if not stage_in_pos:
@@ -411,6 +443,8 @@ class Transient:
         -------
         
         '''
+        self.log_message("ESP302 HAS NOT BEEN SETUP FOR SLOW MODE YET")
+        return
         for i in range(params['DELAY_POINTS']):
                 percent = (self.delay_mm[i]-np.min(self.delay_mm))/(np.max(self.delay_mm)-np.min(self.delay_mm))
                 if i%10==0:
@@ -483,19 +517,18 @@ class Transient:
                                             1)
             
         
-        stage_vel = (params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0])/params['DAC_TIME']
+        stage_vel = (np.abs(params['DELAY_RANGE_MM'][1]-params['DELAY_RANGE_MM'][0]))/params['DAC_TIME']
         # Start moving stage
         self.log_message("Moving to final position...")
-        self.ds.gpib_write("1VA{:.6f}".format(stage_vel))
-        self.ds.gpib_write("WT1000")
-        self.ds.gpib_write("1PA{:.6f}".format(params['DELAY_RANGE_MM'][1]))
-        self.ds.gpib_write("1WS1000")
-        
 
-       
+        self.ds.set_velocity(1,stage_vel)
 
+        #self.ds.wait_stop(1,100)
+        self.ds.move_axis(1,params["DELAY_RANGE_MM"][1])
+        #self.ds.wait_stop(1,1000)
         br_start = time.time()
         # Buffer ramp DAC
+        
         br_data = np.array(self.dac.buffer_ramp(params['DAC_OUTPUT_CH_DUMMY'],
                                             params['DAC_INPUT_CH'],
                                             [params["DAC_OUTPUT_CH_DUMMY_V"][0]],
@@ -527,11 +560,15 @@ class Transient:
                                 ),axis=0).T
         
         self.dv.add(dv_data)
-            
+        
         # Start moving stage
         self.log_message("Moving to start position...")
+        '''
         self.ds.gpib_write("1VA{:.6f}".format(5))
         self.ds.move_absolute(1,params['DELAY_RANGE_MM'][0])
+        '''
+        self.ds.set_velocity(1,5)
+        self.ds.move_axis(1,params["DELAY_RANGE_MM"][0])
 
         #If voltage at end of buffer ramp is not 0, ramp down
         if(params['DAC_OUTPUT_CH_DUMMY_V'][1]):
@@ -545,7 +582,7 @@ class Transient:
                                             1)
   
         # Sleep
-        time.sleep(10)
+        #time.sleep(10)
 
     def scan_transient_sweep(self, params, 
                              n0_idx = 0, p0_idx = 0, n0 = 0.0, p0 = 0.0, vb = 0.0, vt = 0.0):
@@ -759,14 +796,15 @@ def main():
     tempServer = TemperatureServer.TemperaturePoll(ls350)
     
     # Delay stage
-    ds = cxn.esp300()
-    ds.select_device()
+    ds = cxn.esp302server()
+    #ds.select_device() not necessary in this server
     
     # Lockin - THz
     lck1 = cxn.sr860()
     lck1.select_device(params['LIA_THZ']['DEV'])
     lck1.time_constant(params['LIA_THZ']['TIME_CONST'])
     lck1.sensitivity(params['LIA_THZ']['SENS'])
+    lck1.sine_out_amplitude(params['LIA_THZ']['AMPL'])
 
     # Lockin - THz - shaker
     lck3 = cxn.sr860()
@@ -777,7 +815,7 @@ def main():
     lck3.frequency(params['LIA_THZ2']['FREQ'])
     
     # Lockin - Transport
-    lck2 = cxn.sr860()
+    lck2 = cxn.sr830()
     lck2.select_device(params['LIA_R']['DEV'])    
     lck2.time_constant(params['LIA_R']['TIME_CONST'])
     lck2.sensitivity(params['LIA_R']['SENS'])
@@ -813,13 +851,14 @@ def main():
     start = time.time()
     scanTransient.log_message('Measurement Started')
     
-    # Voltage ramp up on E SMU
-    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[0],[params['BIAS_E']])
 
     # Setup DataVault file and Config file
     scanTransient.log_message("Setting up datavault and config file...")
     scanTransient.setup_datavault(params)
     scanTransient.save_config(params)
+    
+    # Voltage ramp up on E SMU
+    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[0],[params['BIAS_E']])
 
     try:
         # Sweeps
@@ -831,18 +870,20 @@ def main():
     except Exception as error:
         scanTransient.log_message("Safe exit in process. {}".format(error))
     
+    # Voltage ramp down
+    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[params['BIAS_E']],[0])
+
+    # Turn off Piezo
+    lck3.sine_out_amplitude(0)
+    lck1.sine_out_amplitude(0)
+    
     # Kill Temperature serverp
     tempServer.stop_thread = True
 
     # Initialize the stage to starting position
     scanTransient.init_stage_position(params)
     
-    # Voltage ramp down
-    scanTransient.voltage_ramp_dac(dac,[params['DAC_OUTPUT_CH']],[params['BIAS_E']],[0])
-
-    # Turn off Piezo
-    lck3.sine_out_amplitude(0)
-
+    
     # save data in mat format
     scanTransient.save_to_mat()
     # Measurements end
